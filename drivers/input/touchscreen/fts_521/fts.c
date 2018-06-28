@@ -3983,6 +3983,8 @@ static irqreturn_t fts_event_handler(int irq, void *ts_info)
 	static char pre_id[3];
 	event_dispatch_handler_t event_handler;
 
+	pm_qos_update_request(&info->pm_touch_req, 100);
+
 	if (info->tp_pm_suspend) {
 		logError(1, "%s device in suspend, schedue to work", tag);
 		pm_wakeup_event(info->dev, 0);
@@ -3990,12 +3992,12 @@ static irqreturn_t fts_event_handler(int irq, void *ts_info)
 			pm_stay_awake(info->dev);
 			queue_work(info->irq_wq, &info->sleep_work);
 		}
-		return IRQ_HANDLED;
+		goto handled;
 	}
 
 #ifdef CONFIG_SECURE_TOUCH
 	if (!fts_secure_filter_interrupt(info)) {
-		return IRQ_HANDLED;
+		goto handled;
 	}
 #endif
 	lpm_disable_for_input(true);
@@ -4045,6 +4047,8 @@ static irqreturn_t fts_event_handler(int irq, void *ts_info)
 	info->irq_status = false;
 	if (!info->touch_id)
 		lpm_disable_for_input(false);
+handled:
+	pm_qos_update_request(&info->pm_touch_req, PM_QOS_DEFAULT_VALUE);
 	return IRQ_HANDLED;
 }
 
@@ -6030,6 +6034,11 @@ static int fts_probe(struct spi_device *client)
 		goto ProbeErrorExit_4;
 	}
 
+	info->pm_touch_req.type = PM_QOS_REQ_AFFINE_IRQ;
+	info->pm_touch_req.irq = info->client->irq;
+	pm_qos_add_request(&info->pm_touch_req, PM_QOS_CPU_DMA_LATENCY,
+			   PM_QOS_DEFAULT_VALUE);
+
 	INIT_WORK(&info->resume_work, fts_resume_work);
 	INIT_WORK(&info->suspend_work, fts_suspend_work);
 	INIT_WORK(&info->sleep_work, fts_ts_sleep_work);
@@ -6434,6 +6443,7 @@ static int fts_remove(struct spi_device *client)
 #ifdef CONFIG_SECURE_TOUCH
 	fts_secure_remove(info);
 #endif
+	pm_qos_remove_request(&info->pm_touch_req);
 	/* free all */
 	kfree(info);
 

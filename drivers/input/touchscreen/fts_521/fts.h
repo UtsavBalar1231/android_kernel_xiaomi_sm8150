@@ -38,6 +38,7 @@
 #include "fts_lib/ftsSoftware.h"
 #include "fts_lib/ftsHardware.h"
 #include <linux/completion.h>
+#include <linux/pm_qos.h>
 /****************** CONFIGURATION SECTION ******************/
 /** @defgroup conf_section	 Driver Configuration Section
 * Settings of the driver code in order to suit the HW set up and the application behavior
@@ -367,6 +368,7 @@ struct fts_ts_info {
 	bool palm_sensor_switch;
 	bool tp_pm_suspend;
 	struct completion pm_resume_completion;
+	struct pm_qos_request pm_touch_req;
 };
 
 struct fts_mode_switch {
