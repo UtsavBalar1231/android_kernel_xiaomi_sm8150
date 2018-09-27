@@ -7484,8 +7484,6 @@ static inline int find_best_target(struct task_struct *p, int *backup_cpu,
 			if (!cpu_online(i) || cpu_isolated(i))
 				continue;
 
-			if (isolated_candidate == -1)
-				isolated_candidate = i;
 			/*
 			 * This CPU is the target of an active migration that's
 			 * yet to complete. Avoid placing another task on it.
@@ -7849,11 +7847,6 @@ static inline int find_best_target(struct task_struct *p, int *backup_cpu,
 		target_cpu = *backup_cpu;
 		*backup_cpu = -1;
 	}
-
-	if (target_cpu == -1 && isolated_candidate != -1 &&
-	    cpu_isolated(prev_cpu))
-		target_cpu = isolated_candidate;
-
 out:
 	return target_cpu;
 }
