@@ -2082,6 +2082,14 @@ config TEST_STACKINIT
 
 	  If unsure, say N.
 
+config TEST_MEMCAT_P
+	tristate "Test memcat_p() helper function"
+	help
+	  Test the memcat_p() helper for correctly merging two
+	  pointer arrays together.
+
+	  If unsure, say N.
+
 endmenu # runtime tests
 
 config MEMTEST
