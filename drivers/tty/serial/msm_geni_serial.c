@@ -1,3 +1,4 @@
+
 /*
  * Copyright (c) 2017-2018, The Linux foundation. All rights reserved.
  *
@@ -1568,14 +1569,6 @@ static void msm_geni_serial_shutdown(struct uart_port *uport)
 {
 	struct msm_geni_serial_port *msm_port = GET_DEV_PORT(uport);
 	unsigned long flags;
-
-	/* Stop the console before stopping the current tx */
-	if (uart_console(uport)) {
-		console_stop(uport->cons);
-	} else {
-		msm_geni_serial_power_on(uport);
-		wait_for_transfers_inflight(uport);
-	}
 
 	disable_irq(uport->irq);
 	free_irq(uport->irq, uport);
