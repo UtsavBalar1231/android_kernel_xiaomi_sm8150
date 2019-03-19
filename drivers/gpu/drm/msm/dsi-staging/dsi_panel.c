@@ -3670,6 +3670,9 @@ int dsi_panel_set_lp1(struct dsi_panel *panel)
 	}
 
 	mutex_lock(&panel->panel_lock);
+	if (!panel->panel_initialized)
+		goto exit;
+
 	rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_LP1);
 	if (rc)
 		pr_err("[%s] failed to send DSI_CMD_SET_LP1 cmd, rc=%d\n",
@@ -3682,6 +3685,7 @@ int dsi_panel_set_lp1(struct dsi_panel *panel)
 
 	panel->doze_state = true;
 
+exit:
 	mutex_unlock(&panel->panel_lock);
 	return rc;
 }
@@ -3697,6 +3701,9 @@ int dsi_panel_set_lp2(struct dsi_panel *panel)
 	}
 
 	mutex_lock(&panel->panel_lock);
+	if (!panel->panel_initialized)
+		goto exit;
+
 	rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_LP2);
 	if (rc)
 		pr_err("[%s] failed to send DSI_CMD_SET_LP2 cmd, rc=%d\n",
@@ -3709,6 +3716,7 @@ int dsi_panel_set_lp2(struct dsi_panel *panel)
 
 	panel->doze_state = true;
 
+exit:
 	mutex_unlock(&panel->panel_lock);
 	return rc;
 }
@@ -3723,6 +3731,9 @@ int dsi_panel_set_nolp(struct dsi_panel *panel)
 	}
 
 	mutex_lock(&panel->panel_lock);
+	if (!panel->panel_initialized)
+		goto exit;
+
 	rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_NOLP);
 	if (rc)
 		pr_err("[%s] failed to send DSI_CMD_SET_NOLP cmd, rc=%d\n",
@@ -3730,6 +3741,7 @@ int dsi_panel_set_nolp(struct dsi_panel *panel)
 
 	panel->doze_state = false;
 
+exit:
 	mutex_unlock(&panel->panel_lock);
 	return rc;
 }
@@ -3985,11 +3997,11 @@ int dsi_panel_enable(struct dsi_panel *panel)
 	mutex_lock(&panel->panel_lock);
 
 	rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_ON);
-	if (rc) {
+	if (rc)
 		pr_err("[%s] failed to send DSI_CMD_SET_ON cmds, rc=%d\n",
 		       panel->name, rc);
-	}
-	panel->panel_initialized = true;
+	else
+		panel->panel_initialized = true;
 	mutex_unlock(&panel->panel_lock);
 	return rc;
 }
