@@ -682,6 +682,8 @@ KBUILD_CFLAGS   += $(call cc-disable-warning, unused-value)
 KBUILD_CFLAGS   += $(call cc-disable-warning, return-type)
 KBUILD_CFLAGS   += $(call cc-disable-warning, sequence-point)
 KBUILD_CFLAGS   += $(call cc-disable-warning, implicit-int)
+KBUILD_CFLAGS	+= $(call cc-disable-warning, address-of-packed-member)
+
 ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
 KBUILD_CFLAGS	+= $(call cc-option,-Oz,-Os)
 KBUILD_CFLAGS	+= $(call cc-disable-warning,maybe-uninitialized,)
@@ -761,7 +763,6 @@ KBUILD_AFLAGS += $(CLANG_TARGET) $(CLANG_GCC_TC)
 KBUILD_CPPFLAGS += $(call cc-option,-Qunused-arguments,)
 KBUILD_CFLAGS += $(call cc-disable-warning, format-invalid-specifier)
 KBUILD_CFLAGS += $(call cc-disable-warning, gnu)
-KBUILD_CFLAGS += $(call cc-disable-warning, address-of-packed-member)
 KBUILD_CFLAGS += $(call cc-disable-warning, duplicate-decl-specifier)
 
 KBUILD_CFLAGS += -Wno-asm-operand-widths
