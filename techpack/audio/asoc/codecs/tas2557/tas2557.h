@@ -493,4 +493,10 @@ struct tas2557_priv {
 
 };
 
+#undef dev_dbg
+#define dev_dbg { do { } while (0); }
+
+#undef dev_info
+#define dev_info { do { } while (0); }
+
 #endif /* _TAS2557_H */
