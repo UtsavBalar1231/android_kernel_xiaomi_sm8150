@@ -776,8 +776,6 @@ ifdef CONFIG_MODULES
 KBUILD_CFLAGS += $(call cc-option, -mno-global-merge,)
 endif
 
-KBUILD_CFLAGS += $(call cc-option, -fcatch-undefined-behavior)
-
 # clang's -Wpointer-to-int-cast warns when casting to enums, which does not match GCC.
 # Disable that part of the warning because it is very noisy across the kernel and does
 # not point out any real bugs.
