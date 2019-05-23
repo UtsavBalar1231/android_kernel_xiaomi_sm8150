@@ -681,6 +681,18 @@ And public attribution of xiaomi platforms(like F1 and so and)
 			};
 		};
 	};
+
+	pm8150l-vph-lvl0 {
+		status = "disabled";
+	};
+
+	pm8150l-vph-lvl1 {
+		status = "disabled";
+	};
+
+	pm8150l-vph-lvl2 {
+		status = "disabled";
+	};
 };
 
 &pm8150b_haptics {
