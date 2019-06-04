@@ -528,7 +528,7 @@ CONFIG_TRACE_RECORD_FEATURE := y
 CONFIG_WLAN_DFS_MASTER_ENABLE := y
 
 #Flag to enable nud tracking feature
-CONFIG_WLAN_NUD_TRACKING := y
+CONFIG_WLAN_NUD_TRACKING := n
 
 #Flag to enable wbuff feature
 CONFIG_WLAN_WBUFF := y
@@ -541,7 +541,7 @@ ifneq ($(CONFIG_WIFI_POS_CONVERGED), y)
 CONFIG_WIFI_POS_LEGACY := y
 endif
 
-CONFIG_CP_STATS := y
+CONFIG_CP_STATS := n
 
 CONFIG_FEATURE_WLAN_WAPI := y
 
