@@ -560,6 +560,7 @@ static int limits_dcvs_probe(struct platform_device *pdev)
 	cpumask_t mask = { CPU_BITS_NONE };
 	const __be32 *addr;
 	unsigned long max_limit = 0;
+	bool no_cdev_register = false;
 
 	for_each_possible_cpu(cpu) {
 		cpu_node = of_cpu_device_node_get(cpu);
@@ -619,6 +620,9 @@ static int limits_dcvs_probe(struct platform_device *pdev)
 	/* Check whether platform mitigation needs to enable or not */
 	hw->is_plat_mit_disabled = of_property_read_bool(dn,
 				"qcom,plat-mitigation-disable");
+
+	no_cdev_register = of_property_read_bool(dn,
+				"qcom,no-cooling-device-register");
 
 	addr = of_get_address(dn, 0, NULL, NULL);
 	if (!addr) {
@@ -706,11 +710,14 @@ probe_exit:
 	mutex_unlock(&lmh_dcvs_list_access);
 	lmh_debug_register(pdev);
 
-	ret = cpuhp_setup_state(CPUHP_AP_ONLINE_DYN, "lmh-dcvs/cdev:online",
-				limits_cpu_online, NULL);
-	if (ret < 0)
-		goto unregister_sensor;
-	ret = 0;
+	if (!no_cdev_register) {
+		ret = cpuhp_setup_state(CPUHP_AP_ONLINE_DYN,
+					"lmh-dcvs/cdev:online",
+					limits_cpu_online, NULL);
+		if (ret < 0)
+			goto unregister_sensor;
+		ret = 0;
+	}
 
 	return ret;
 
