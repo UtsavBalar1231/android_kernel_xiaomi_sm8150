@@ -672,7 +672,16 @@ KBUILD_CFLAGS	+= $(call cc-disable-warning, format-truncation)
 KBUILD_CFLAGS	+= $(call cc-disable-warning, format-overflow)
 KBUILD_CFLAGS	+= $(call cc-disable-warning, int-in-bool-context)
 KBUILD_CFLAGS	+= $(call cc-disable-warning, attribute-alias)
-
+KBUILD_CFLAGS   += $(call cc-disable-warning, maybe-uninitialized,)
+KBUILD_CFLAGS   += $(call cc-disable-warning, used-uninitialized,)
+KBUILD_CFLAGS   += $(call cc-disable-warning, format)
+KBUILD_CFLAGS   += $(call cc-disable-warning, unused-result)
+KBUILD_CFLAGS   += $(call cc-disable-warning, pointer-to-int-cast)
+KBUILD_CFLAGS   += $(call cc-disable-warning, sizeof-pointer-memaccess)
+KBUILD_CFLAGS   += $(call cc-disable-warning, unused-value)
+KBUILD_CFLAGS   += $(call cc-disable-warning, return-type)
+KBUILD_CFLAGS   += $(call cc-disable-warning, sequence-point)
+KBUILD_CFLAGS   += $(call cc-disable-warning, implicit-int)
 ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
 KBUILD_CFLAGS	+= $(call cc-option,-Oz,-Os)
 KBUILD_CFLAGS	+= $(call cc-disable-warning,maybe-uninitialized,)
@@ -916,7 +925,7 @@ KBUILD_CFLAGS  += $(call cc-option,-fno-stack-check,)
 KBUILD_CFLAGS   += $(call cc-option,-fconserve-stack)
 
 # disallow errors like 'EXPORT_GPL(foo);' with missing header
-KBUILD_CFLAGS   += $(call cc-option,-Werror=implicit-int)
+# KBUILD_CFLAGS   += $(call cc-option,-Werror=implicit-int)
 
 # require functions to have arguments in prototypes, not empty 'int foo()'
 KBUILD_CFLAGS   += $(call cc-option,-Werror=strict-prototypes)
