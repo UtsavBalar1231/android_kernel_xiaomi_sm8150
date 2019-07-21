@@ -542,6 +542,10 @@ And public attribution of xiaomi platforms(like F1 and so and)
 };
 
 &pm8150l_adc_tm {
+	io-channels = <&pm8150_vadc ADC_XO_THERM_PU2>,
+			<&pm8150_vadc ADC_AMUX_THM2_PU2>,
+			<&pm8150_vadc ADC_AMUX_THM3_PU2>;
+
 	cam_therm0 {
 		reg = <ADC_AMUX_THM1_PU2>;
 		qcom,ratiometric;
@@ -559,6 +563,24 @@ And public attribution of xiaomi platforms(like F1 and so and)
 		qcom,ratiometric;
 		qcom,hw-settle-time = <200>;
 	};
+};
+
+&vbat_lvl0 {
+	temperature = <3200>;
+	hysteresis = <200>;
+	type = "passive";
+};
+
+&vbat_lvl1 {
+	temperature = <3000>;
+	hysteresis = <200>;
+	type = "passive";
+};
+
+&vbat_lvl2 {
+	temperature = <2800>;
+	hysteresis = <200>;
+	type = "passive";
 };
 
 &thermal_zones {
