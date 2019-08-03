@@ -1489,6 +1489,4 @@ config MACH_XIAOMI_RAPHAEL
 
 endmenu
 
-source "techpack/Kconfig"
-
 endmenu
