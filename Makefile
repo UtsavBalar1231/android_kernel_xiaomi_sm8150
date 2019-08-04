@@ -675,6 +675,16 @@ KBUILD_CFLAGS	+= $(call cc-disable-warning, format-overflow)
 KBUILD_CFLAGS	+= $(call cc-disable-warning, int-in-bool-context)
 KBUILD_CFLAGS	+= $(call cc-disable-warning, attribute-alias)
 
+ifeq ($(cc-name),clang)
+KBUILD_CFLAGS	+= $(call cc-option,-march=armv8.2-a,) $(call cc-option,-mcpu=cortex-a55,)
+KBUILD_CFLAGS	+= -O3
+HOSTCFLAGS   	+= -O3
+HOSTCXXFLAGS 	+= -O3
+else
+KBUILD_CFLAGS	+= $(call cc-option,-march=armv8.2-a,) $(call cc-option, -mcpu=cortex-a76.cortex-a55+crc+crypto)
+KBUILD_CFLAGS	+= -O2 -Wno-psabi
+endif
+
 ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
 KBUILD_CFLAGS	+= $(call cc-option,-Oz,-Os)
 KBUILD_CFLAGS	+= $(call cc-disable-warning,maybe-uninitialized,)
