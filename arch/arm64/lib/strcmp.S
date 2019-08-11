@@ -29,6 +29,8 @@
  * ARMv8-a, AArch64
  */
 
+#define L(label) .L ## label
+
 #include <linux/linkage.h>
 #include <asm/assembler.h>
 
@@ -59,22 +61,22 @@ pos		.req	x11
 ENTRY(strcmp)
 	prfm    pldl1strm, [src1]
 	prfm    pldl1strm, [src2]
-	b	.Lperf_critical
+	b	L(perf_critical)
 .align  6
-.Lperf_critical:
+L(perf_critical):
 	eor	tmp1, src1, src2
 	mov	zeroones, #REP8_01
 	tst	tmp1, #7
-	b.ne	.Lmisaligned8
+	b.ne	L(misaligned8)
 	ands	tmp1, src1, #7
-	b.ne	.Lmutual_align
+	b.ne	L(mutual_align)
 	/* NUL detection works on the principle that (X - 1) & (~X) & 0x80
 	   (=> (X - 1) & ~(X | 0x7f)) is non-zero iff a byte is zero, and
 	   can be done in parallel across the entire word.  */
-.Lloop_aligned:
+L(loop_aligned):
 	ldr	data1, [src1], #8
 	ldr	data2, [src2], #8
-.Lstart_realigned:
+L(start_realigned):
 	prfm    pldl1strm, [src1]
 	prfm    pldl1strm, [src2]
 	sub	tmp1, data1, zeroones
@@ -82,10 +84,10 @@ ENTRY(strcmp)
 	eor	diff, data1, data2	/* Non-zero if differences found.  */
 	bic	has_nul, tmp1, tmp2	/* Non-zero if NUL terminator.  */
 	orr	syndrome, diff, has_nul
-	cbz	syndrome, .Lloop_aligned
+	cbz	syndrome, L(loop_aligned)
 	/* End of performance-critical section  -- one 64B cache line.  */
 
-.Lend:
+L(end):
 CPU_LE( rev	syndrome, syndrome )
 CPU_LE( rev	data1, data1 )
 	/* The MS-non-zero bit of the syndrome marks either the first bit
@@ -133,7 +135,7 @@ CPU_BE( lsr	data1, data1, #56 )
 CPU_BE( sub	result, data1, data2, lsr #56 )
 	ret
 
-.Lmutual_align:
+L(mutual_align):
 	/* Sources are mutually aligned, but are not currently at an
 	   alignment boundary.  Round down the addresses and then mask off
 	   the bytes that preceed the start point.  */
@@ -151,29 +153,29 @@ CPU_LE( lsr	tmp2, tmp2, tmp1 )	/* Shift (tmp1 & 63).  */
 
 	orr	data1, data1, tmp2
 	orr	data2, data2, tmp2
-	b	.Lstart_realigned
+	b	L(start_realigned)
 
-.Lmisaligned8:
+L(misaligned8):
 	/* Align SRC1 to 8 bytes and then compare 8 bytes at a time, always
 	   checking to make sure that we don't access beyond page boundary in
 	   SRC2.  */
 	tst	src1, #7
-	b.eq	.Lloop_misaligned
-.Ldo_misaligned:
+	b.eq	L(loop_misaligned)
+L(do_misaligned):
 	ldrb	data1w, [src1], #1
 	ldrb	data2w, [src2], #1
 	cmp	data1w, #1
 	ccmp	data1w, data2w, #0, cs	/* NZCV = 0b0000.  */
-	b.ne	.Ldone
+	b.ne	L(done)
 	tst	src1, #7
-	b.ne	.Ldo_misaligned
+	b.ne	L(do_misaligned)
 
-.Lloop_misaligned:
+L(loop_misaligned):
 	/* Test if we are within the last dword of the end of a 4K page.  If
 	   yes then jump back to the misaligned loop to copy a byte at a time.  */
 	and	tmp1, src2, #0xff8
 	eor	tmp1, tmp1, #0xff8
-	cbz	tmp1, .Ldo_misaligned
+	cbz	tmp1, L(do_misaligned)
 	ldr	data1, [src1], #8
 	ldr	data2, [src2], #8
 
@@ -182,10 +184,10 @@ CPU_LE( lsr	tmp2, tmp2, tmp1 )	/* Shift (tmp1 & 63).  */
 	eor	diff, data1, data2	/* Non-zero if differences found.  */
 	bic	has_nul, tmp1, tmp2	/* Non-zero if NUL terminator.  */
 	orr	syndrome, diff, has_nul
-	cbz	syndrome, .Lloop_misaligned
-	b	.Lend
+	cbz	syndrome, L(loop_misaligned)
+	b	L(end)
 
-.Ldone:
+L(done):
 	sub	result, data1, data2
 	ret
 ENDPIPROC(strcmp)
