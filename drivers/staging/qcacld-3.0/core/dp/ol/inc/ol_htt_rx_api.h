@@ -896,7 +896,6 @@ htt_rx_offload_paddr_msdu_pop_ll(htt_pdev_handle pdev,
 
 uint32_t htt_rx_amsdu_rx_in_order_get_pktlog(qdf_nbuf_t rx_ind_msg);
 
-#ifndef REMOVE_PKT_LOG
 /**
  * htt_rx_update_smmu_map() - set smmu map/unmap for rx buffers
  * @pdev: htt pdev handle
@@ -919,10 +918,4 @@ void htt_rx_enable_ppdu_end(int *enable_ppdu_end)
 }
 #endif
 
-#else
-static inline QDF_STATUS htt_rx_update_smmu_map(struct htt_pdev_t *pdev, bool map)
-{
-	return QDF_STATUS_SUCCESS;
-}
-#endif
 #endif /* _OL_HTT_RX_API__H_ */
