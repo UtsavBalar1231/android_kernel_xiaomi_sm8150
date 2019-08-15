@@ -7089,7 +7089,6 @@ static void ufshcd_err_handler(struct work_struct *work)
 		ufshcd_print_pwr_info(hba);
 		ufshcd_print_host_regs(hba);
 		ufshcd_print_cmd_log(hba);
-		BUG_ON(ufshcd_check_phy_state(hba));
 	}
 
 	spin_lock_irqsave(hba->host->host_lock, flags);
@@ -8082,6 +8081,9 @@ static int ufshcd_reset_and_restore(struct ufs_hba *hba)
 	int retries = MAX_HOST_RESET_RETRIES;
 
 	ufshcd_custom_cmd_log(hba, "Reset-and-Restore-Enter");
+
+	/* should turn on clocks, just in case */
+	ufshcd_enable_clocks(hba);
 
 	ufshcd_enable_irq(hba);
 
