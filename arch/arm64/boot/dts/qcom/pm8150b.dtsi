@@ -380,6 +380,7 @@
 			#address-cells = <1>;
 			#size-cells = <1>;
 			qcom,pmic-revid = <&pm8150b_revid>;
+			qcom,soc-hi-res;
 			status = "okay";
 
 			qcom,fg-batt-soc@4000 {
