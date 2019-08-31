@@ -169,10 +169,6 @@ CDEFINES +=	-DANI_LITTLE_BYTE_ENDIAN \
 		-Wall\
 		-D__linux__
 
-ifeq ($(PRODUCT_BUILD_INTERNATIONAL),true)
-CDEFINES += -DGOOGLE_HOTWORD
-endif
-
 KBUILD_CPPFLAGS += $(CDEFINES)
 
 # Currently, for versions of gcc which support it, the kernel Makefile
