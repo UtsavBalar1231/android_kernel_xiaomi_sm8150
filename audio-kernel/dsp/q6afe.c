@@ -206,7 +206,6 @@ done:
 	return topology;
 }
 
-
 /**
  * afe_set_aanc_info -
  *        Update AFE AANC info

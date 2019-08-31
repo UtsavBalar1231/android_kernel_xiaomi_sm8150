@@ -10,7 +10,6 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
-//#define DEBUG
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/firmware.h>
@@ -641,7 +640,7 @@ struct tavil_priv {
 	int power_active_ref;
 	u8 sidetone_coeff_array[IIR_MAX][BAND_MAX]
 		[WCD934X_CDC_SIDETONE_IIR_COEFF_MAX * 4];
-	unsigned short slim_tx_of_uf_cnt[WCD934X_TX_MAX][SB_PORT_ERR_MAX];
+
 	struct spi_device *spi;
 	struct platform_device *pdev_child_devices
 		[WCD934X_CHILD_DEVICES_MAX];
@@ -651,6 +650,7 @@ struct tavil_priv {
 	int micb_load_low;
 	int micb_load_high;
 	u8 dmic_drv_ctl;
+	unsigned short slim_tx_of_uf_cnt[WCD934X_TX_MAX][SB_PORT_ERR_MAX];
 };
 
 static const struct tavil_reg_mask_val tavil_spkr_default[] = {
@@ -1931,9 +1931,9 @@ static int tavil_codec_enable_slimvi_feedback(struct snd_soc_dapm_widget *w,
 	struct wcd9xxx *core = NULL;
 	struct snd_soc_codec *codec = NULL;
 	struct tavil_priv *tavil_p = NULL;
+	struct wcd9xxx_ch *ch;
 	int ret = 0;
 	struct wcd9xxx_codec_dai_data *dai = NULL;
-	struct wcd9xxx_ch *ch;
 
 	codec = snd_soc_dapm_to_codec(w->dapm);
 	tavil_p = snd_soc_codec_get_drvdata(codec);
@@ -9808,6 +9808,7 @@ static irqreturn_t tavil_slimbus_irq(int irq, void *data)
 			}
 
 		}
+
 		if ((val & WCD934X_SLIM_IRQ_OVERFLOW) ||
 			(val & WCD934X_SLIM_IRQ_UNDERFLOW)) {
 			if (!tx)
