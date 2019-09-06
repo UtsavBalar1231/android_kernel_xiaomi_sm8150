@@ -221,7 +221,7 @@ static int cam_fd_mgr_util_get_device(struct cam_fd_hw_mgr *hw_mgr,
 static int cam_fd_mgr_util_release_device(struct cam_fd_hw_mgr *hw_mgr,
 	struct cam_fd_hw_mgr_ctx *hw_ctx)
 {
-	struct cam_fd_device *hw_device;
+	struct cam_fd_device *hw_device = NULL;
 	struct cam_fd_hw_release_args hw_release_args;
 	int rc;
 
@@ -1258,7 +1258,7 @@ static int cam_fd_mgr_hw_start(void *hw_mgr_priv, void *mgr_start_args)
 	struct cam_hw_start_args *hw_mgr_start_args =
 		(struct cam_hw_start_args *)mgr_start_args;
 	struct cam_fd_hw_mgr_ctx *hw_ctx;
-	struct cam_fd_device *hw_device;
+	struct cam_fd_device *hw_device = NULL;
 	struct cam_fd_hw_init_args hw_init_args;
 
 	if (!hw_mgr_priv || !hw_mgr_start_args) {
@@ -1306,7 +1306,7 @@ static int cam_fd_mgr_hw_flush_req(void *hw_mgr_priv,
 	int rc = 0;
 	struct cam_fd_mgr_frame_request *frame_req, *req_temp, *flush_req;
 	struct cam_fd_hw_mgr *hw_mgr = (struct cam_fd_hw_mgr *)hw_mgr_priv;
-	struct cam_fd_device *hw_device;
+	struct cam_fd_device *hw_device = NULL;
 	struct cam_fd_hw_stop_args hw_stop_args;
 	struct cam_fd_hw_mgr_ctx *hw_ctx;
 	uint32_t i = 0;
@@ -1407,7 +1407,7 @@ static int cam_fd_mgr_hw_flush_ctx(void *hw_mgr_priv,
 	int rc = 0;
 	struct cam_fd_mgr_frame_request *frame_req, *req_temp, *flush_req;
 	struct cam_fd_hw_mgr *hw_mgr = (struct cam_fd_hw_mgr *)hw_mgr_priv;
-	struct cam_fd_device *hw_device;
+	struct cam_fd_device *hw_device = NULL;
 	struct cam_fd_hw_stop_args hw_stop_args;
 	struct cam_fd_hw_mgr_ctx *hw_ctx;
 	uint32_t i = 0;
@@ -1527,7 +1527,7 @@ static int cam_fd_mgr_hw_stop(void *hw_mgr_priv, void *mgr_stop_args)
 	struct cam_hw_stop_args *hw_mgr_stop_args =
 		(struct cam_hw_stop_args *)mgr_stop_args;
 	struct cam_fd_hw_mgr_ctx *hw_ctx;
-	struct cam_fd_device *hw_device;
+	struct cam_fd_device *hw_device = NULL;
 	struct cam_fd_hw_deinit_args hw_deinit_args;
 	int rc = 0;
 

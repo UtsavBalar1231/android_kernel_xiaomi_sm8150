@@ -289,7 +289,7 @@ static int qti_haptics_write(struct qti_hap_chip *chip,
 		if (len > 1)
 			rc = regmap_bulk_write(chip->regmap,
 					chip->reg_base + addr, val, len);
-		else
+			else
 			rc = regmap_write(chip->regmap,
 					chip->reg_base + addr, *val);
 

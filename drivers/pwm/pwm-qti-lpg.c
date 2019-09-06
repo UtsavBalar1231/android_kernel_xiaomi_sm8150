@@ -270,7 +270,7 @@ static struct qpnp_lpg_channel *pwm_dev_to_qpnp_lpg(struct pwm_chip *pwm_chip,
 
 void qpnp_lpg_ramp_step_ms_set(struct pwm_device *pwm, u16 step_ms)
 {
-	struct qpnp_lpg_channel *channel;
+	struct qpnp_lpg_channel *channel = NULL;
 
 	if (pwm != NULL)
 		channel = pwm_dev_to_qpnp_lpg(pwm->chip, pwm);
@@ -282,7 +282,7 @@ EXPORT_SYMBOL(qpnp_lpg_ramp_step_ms_set);
 
 int qpnp_lpg_ramp_step_ms_get(struct pwm_device *pwm)
 {
-	struct qpnp_lpg_channel *channel;
+	struct qpnp_lpg_channel *channel = NULL;
 
 	if (pwm != NULL)
 		channel = pwm_dev_to_qpnp_lpg(pwm->chip, pwm);
@@ -296,7 +296,7 @@ EXPORT_SYMBOL(qpnp_lpg_ramp_step_ms_get);
 
 void qpnp_lpg_pause_lo_count_set(struct pwm_device *pwm, u8 pause_lo_count)
 {
-	struct qpnp_lpg_channel *channel;
+	struct qpnp_lpg_channel *channel = NULL;
 
 	if (pwm != NULL)
 		channel = pwm_dev_to_qpnp_lpg(pwm->chip, pwm);
@@ -308,7 +308,7 @@ EXPORT_SYMBOL(qpnp_lpg_pause_lo_count_set);
 
 u8 qpnp_lpg_pause_lo_count_get(struct pwm_device *pwm)
 {
-	struct qpnp_lpg_channel *channel;
+	struct qpnp_lpg_channel *channel = NULL;
 
 	if (pwm != NULL)
 		channel = pwm_dev_to_qpnp_lpg(pwm->chip, pwm);
@@ -565,8 +565,8 @@ static int qpnp_lpg_set_ramp_config(struct qpnp_lpg_channel *lpg)
 
 u8 qpnp_lpg_switch_lut_pattern(struct pwm_device *pwm, int index)
 {
-	struct qpnp_lpg_channel *channel;
-	struct qpnp_lpg_lut *lut;
+	struct qpnp_lpg_channel *channel = NULL;
+	struct qpnp_lpg_lut *lut = NULL;
 
 	if (pwm != NULL)
 		channel = pwm_dev_to_qpnp_lpg(pwm->chip, pwm);
@@ -605,7 +605,7 @@ EXPORT_SYMBOL(qpnp_lpg_switch_lut_pattern);
 
 u8 qpnp_lpg_lo_idx_get(struct pwm_device *pwm)
 {
-	struct qpnp_lpg_channel *channel;
+	struct qpnp_lpg_channel *channel = NULL;
 
 	if (pwm != NULL)
 		channel = pwm_dev_to_qpnp_lpg(pwm->chip, pwm);
@@ -616,8 +616,8 @@ EXPORT_SYMBOL(qpnp_lpg_lo_idx_get);
 
 u8 qpnp_lpg_lo_idx_set(struct pwm_device *pwm, int lo_idx)
 {
-	struct qpnp_lpg_channel *channel;
-	struct qpnp_lpg_lut *lut;
+	struct qpnp_lpg_channel *channel = NULL;
+	struct qpnp_lpg_lut *lut = NULL;
 
 	if (pwm != NULL)
 		channel = pwm_dev_to_qpnp_lpg(pwm->chip, pwm);
