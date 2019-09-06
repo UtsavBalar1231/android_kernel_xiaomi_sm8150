@@ -937,7 +937,7 @@ const char *fg_get_battery_type(struct fg_dev *fg)
 
 int fg_get_battery_resistance(struct fg_dev *fg, int *val)
 {
-	int rc, esr_uohms, rslow_uohms;
+	int rc, esr_uohms, rslow_uohms = 0;
 
 	rc = fg_get_sram_prop(fg, FG_SRAM_ESR, &esr_uohms);
 	if (rc < 0) {
