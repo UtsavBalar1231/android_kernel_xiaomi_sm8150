@@ -16,8 +16,8 @@ steps:
         from_secret: ci_channel_id
       BOT_API_KEY:
         from_secret: bot_api_key
-      RELEASE_VERSION: "r2"
-      RELEASE_CODENAME: "Dunkey-Release"
+      RELEASE_VERSION: "r1"
+      RELEASE_CODENAME: "XiaoMeMe"
     commands:
       - apt-get update && apt-get install -y bison build-essential bc bison curl libssl-dev git zip python flex
       - git clone https://github.com/UtsavisGreat/scripts.git -b master script && cd script
@@ -25,4 +25,4 @@ steps:
       - bash kernel.sh
     when:
       branch:
-        - master
+        - miui-p
