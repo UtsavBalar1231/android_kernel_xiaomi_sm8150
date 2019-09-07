@@ -21,8 +21,8 @@ steps:
     commands:
       - apt-get update && apt-get install -y bison build-essential bc bison curl libssl-dev git zip python flex
       - git clone https://github.com/UtsavisGreat/scripts.git -b master script && cd script
-      - bash dronesetup.sh --gcc9
-      - bash kernel.sh  --gcc9
+      - bash dronesetup.sh
+      - bash kernel.sh
     when:
       branch:
         - master
