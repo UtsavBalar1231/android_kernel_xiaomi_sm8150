@@ -8442,7 +8442,7 @@ void wlan_hdd_deinit_tx_rx_histogram(struct hdd_context *hdd_ctx)
 	hdd_ctx->hdd_txrx_hist = NULL;
 }
 
-static uint8_t *convert_level_to_string(uint32_t level)
+static __maybe_unused uint8_t *convert_level_to_string(uint32_t level)
 {
 	switch (level) {
 	/* initialize the wlan sub system */
@@ -12269,8 +12269,6 @@ int hdd_register_cb(struct hdd_context *hdd_ctx)
 	/* print error and not block the startup process */
 	if (!QDF_IS_STATUS_SUCCESS(status))
 		hdd_err("set lost link info callback failed");
-
-	wlan_hdd_register_cp_stats_cb(hdd_ctx);
 
 	ret = hdd_register_data_stall_detect_cb();
 	if (ret) {
