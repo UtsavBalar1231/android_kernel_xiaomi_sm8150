@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2016 Intel Corporation
- * Copyright (C) 2019 XiaoMi, Inc.
  *
  * Permission to use, copy, modify, distribute, and sell this software and its
  * documentation for any purpose is hereby granted without fee, provided that
@@ -264,8 +263,6 @@ struct drm_bridge {
 
 	const struct drm_bridge_funcs *funcs;
 	void *driver_private;
-	struct mutex lock;
-	bool is_dsi_drm_bridge;
 };
 
 int drm_bridge_add(struct drm_bridge *bridge);
@@ -286,7 +283,6 @@ void drm_bridge_mode_set(struct drm_bridge *bridge,
 			struct drm_display_mode *adjusted_mode);
 void drm_bridge_pre_enable(struct drm_bridge *bridge);
 void drm_bridge_enable(struct drm_bridge *bridge);
-int dsi_bridge_interface_enable(int timeout);
 int drm_bridge_connector_init(struct drm_bridge *bridge,
 	struct drm_connector *connector);
 
