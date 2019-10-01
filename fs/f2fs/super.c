@@ -1025,8 +1025,6 @@ static int f2fs_drop_inode(struct inode *inode)
 		return 0;
 	}
 	ret = generic_drop_inode(inode);
-	if (!ret)
-		ret = fscrypt_drop_inode(inode);
 	trace_f2fs_drop_inode(inode, ret);
 	return ret;
 }
@@ -1206,6 +1204,7 @@ static void f2fs_put_super(struct super_block *sb)
 	 * above failed with error.
 	 */
 	f2fs_destroy_stats(sbi);
+	f2fs_gc_sbi_list_del(sbi);
 
 	/* destroy f2fs internal modules */
 	f2fs_destroy_node_manager(sbi);
@@ -2436,27 +2435,13 @@ static bool f2fs_dummy_context(struct inode *inode)
 	return DUMMY_ENCRYPTION_ENABLED(F2FS_I_SB(inode));
 }
 
-static bool f2fs_has_stable_inodes(struct super_block *sb)
-{
-	return true;
-}
-
-static void f2fs_get_ino_and_lblk_bits(struct super_block *sb,
-				       int *ino_bits_ret, int *lblk_bits_ret)
-{
-	*ino_bits_ret = 8 * sizeof(nid_t);
-	*lblk_bits_ret = 8 * sizeof(block_t);
-}
-
 static const struct fscrypt_operations f2fs_cryptops = {
-	.key_prefix		= "f2fs:",
-	.get_context		= f2fs_get_context,
-	.set_context		= f2fs_set_context,
-	.dummy_context		= f2fs_dummy_context,
-	.empty_dir		= f2fs_empty_dir,
-	.max_namelen		= F2FS_NAME_LEN,
-	.has_stable_inodes	= f2fs_has_stable_inodes,
-	.get_ino_and_lblk_bits	= f2fs_get_ino_and_lblk_bits,
+	.key_prefix	= "f2fs:",
+	.get_context	= f2fs_get_context,
+	.set_context	= f2fs_set_context,
+	.dummy_context	= f2fs_dummy_context,
+	.empty_dir	= f2fs_empty_dir,
+	.max_namelen	= F2FS_NAME_LEN,
 };
 #endif
 
@@ -2670,12 +2655,6 @@ static int sanity_check_raw_super(struct f2fs_sb_info *sbi,
 			f2fs_info(sbi, "Invalid SB checksum value: %u", crc);
 			return -EFSCORRUPTED;
 		}
-	}
-
-	if (le32_to_cpu(raw_super->magic) != F2FS_SUPER_MAGIC) {
-		f2fs_info(sbi, "Magic Mismatch, valid(0x%x) - read(0x%x)",
-			  F2FS_SUPER_MAGIC, le32_to_cpu(raw_super->magic));
-		return -EINVAL;
 	}
 
 	/* Currently, support only 4KB page cache size */
@@ -3444,9 +3423,6 @@ try_onemore:
 #ifdef CONFIG_FS_ENCRYPTION
 	sb->s_cop = &f2fs_cryptops;
 #endif
-#ifdef CONFIG_FS_VERITY
-	sb->s_vop = &f2fs_verityops;
-#endif
 	sb->s_xattr = f2fs_xattr_handlers;
 	sb->s_export_op = &f2fs_export_ops;
 	sb->s_magic = F2FS_SUPER_MAGIC;
@@ -3621,6 +3597,8 @@ try_onemore:
 		goto free_stats;
 	}
 
+	f2fs_gc_sbi_list_add(sbi);
+
 	/* read root inode and dentry */
 	root = f2fs_iget(sb, F2FS_ROOT_INO(sbi));
 	if (IS_ERR(root)) {
@@ -3774,6 +3752,7 @@ free_node_inode:
 	iput(sbi->node_inode);
 	sbi->node_inode = NULL;
 free_stats:
+	f2fs_gc_sbi_list_del(sbi);
 	f2fs_destroy_stats(sbi);
 free_nm:
 	f2fs_destroy_node_manager(sbi);
@@ -3926,6 +3905,8 @@ static int __init init_f2fs_fs(void)
 	err = f2fs_init_bioset();
 	if (err)
 		goto free_bio_enrty_cache;
+	f2fs_init_rapid_gc();
+
 	err = f2fs_init_compress_mempool();
 	if (err)
 		goto free_bioset;
@@ -3959,6 +3940,7 @@ fail:
 
 static void __exit exit_f2fs_fs(void)
 {
+	f2fs_destroy_rapid_gc();
 	f2fs_destroy_compress_mempool();
 	f2fs_destroy_bioset();
 	f2fs_destroy_bio_entry_cache();

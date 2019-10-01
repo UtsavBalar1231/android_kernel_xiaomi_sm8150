@@ -1051,9 +1051,6 @@ static int ext4_drop_inode(struct inode *inode)
 {
 	int drop = generic_drop_inode(inode);
 
-	if (!drop)
-		drop = fscrypt_drop_inode(inode);
-
 	trace_ext4_drop_inode(inode, drop);
 	return drop;
 }
@@ -1128,7 +1125,6 @@ void ext4_clear_inode(struct inode *inode)
 		EXT4_I(inode)->jinode = NULL;
 	}
 	fscrypt_put_encryption_info(inode);
-	fsverity_cleanup_inode(inode);
 }
 
 static struct inode *ext4_nfs_get_inode(struct super_block *sb,
@@ -1136,11 +1132,20 @@ static struct inode *ext4_nfs_get_inode(struct super_block *sb,
 {
 	struct inode *inode;
 
-	/*
+	if (ino < EXT4_FIRST_INO(sb) && ino != EXT4_ROOT_INO)
+		return ERR_PTR(-ESTALE);
+	if (ino > le32_to_cpu(EXT4_SB(sb)->s_es->s_inodes_count))
+		return ERR_PTR(-ESTALE);
+
+	/* iget isn't really right if the inode is currently unallocated!!
+	 *
+	 * ext4_read_inode will return a bad_inode if the inode had been
+	 * deleted, so we should be safe.
+	 *
 	 * Currently we don't know the generation for parent directory, so
 	 * a generation of 0 means "accept any"
 	 */
-	inode = ext4_iget(sb, ino, EXT4_IGET_HANDLE);
+	inode = ext4_iget_normal(sb, ino);
 	if (IS_ERR(inode))
 		return ERR_CAST(inode);
 	if (generation && inode->i_generation != generation) {
@@ -1288,18 +1293,6 @@ static bool ext4_dummy_context(struct inode *inode)
 	return DUMMY_ENCRYPTION_ENABLED(EXT4_SB(inode->i_sb));
 }
 
-static bool ext4_has_stable_inodes(struct super_block *sb)
-{
-	return ext4_has_feature_stable_inodes(sb);
-}
-
-static void ext4_get_ino_and_lblk_bits(struct super_block *sb,
-				       int *ino_bits_ret, int *lblk_bits_ret)
-{
-	*ino_bits_ret = 8 * sizeof(EXT4_SB(sb)->s_es->s_inodes_count);
-	*lblk_bits_ret = 8 * sizeof(ext4_lblk_t);
-}
-
 static const struct fscrypt_operations ext4_cryptops = {
 	.key_prefix		= "ext4:",
 	.get_context		= ext4_get_context,
@@ -1307,8 +1300,6 @@ static const struct fscrypt_operations ext4_cryptops = {
 	.dummy_context		= ext4_dummy_context,
 	.empty_dir		= ext4_empty_dir,
 	.max_namelen		= EXT4_NAME_LEN,
-	.has_stable_inodes	= ext4_has_stable_inodes,
-	.get_ino_and_lblk_bits	= ext4_get_ino_and_lblk_bits,
 };
 #endif
 
@@ -3513,8 +3504,7 @@ int ext4_calculate_overhead(struct super_block *sb)
 	 */
 	if (sbi->s_journal && !sbi->journal_bdev)
 		overhead += EXT4_NUM_B2C(sbi, sbi->s_journal->j_maxlen);
-	else if (ext4_has_feature_journal(sb) && !sbi->s_journal && j_inum) {
-		/* j_inum for internal journal is non-zero */
+	else if (ext4_has_feature_journal(sb) && !sbi->s_journal) {
 		j_inode = ext4_get_journal_inode(sb, j_inum);
 		if (j_inode) {
 			j_blocks = j_inode->i_size >> sb->s_blocksize_bits;
@@ -4279,9 +4269,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
 #ifdef CONFIG_FS_ENCRYPTION
 	sb->s_cop = &ext4_cryptops;
 #endif
-#ifdef CONFIG_FS_VERITY
-	sb->s_vop = &ext4_verityops;
-#endif
 #ifdef CONFIG_QUOTA
 	sb->dq_op = &ext4_quota_operations;
 	if (ext4_has_feature_quota(sb))
@@ -4426,11 +4413,6 @@ no_journal:
 		goto failed_mount_wq;
 	}
 
-	if (ext4_has_feature_verity(sb) && blocksize != PAGE_SIZE) {
-		ext4_msg(sb, KERN_ERR, "Unsupported blocksize for fs-verity");
-		goto failed_mount_wq;
-	}
-
 	if (DUMMY_ENCRYPTION_ENABLED(sbi) && !sb_rdonly(sb) &&
 	    !ext4_has_feature_encrypt(sb)) {
 		ext4_set_feature_encrypt(sb);
@@ -4466,7 +4448,7 @@ no_journal:
 	 * so we can safely mount the rest of the filesystem now.
 	 */
 
-	root = ext4_iget(sb, EXT4_ROOT_INO, EXT4_IGET_SPECIAL);
+	root = ext4_iget(sb, EXT4_ROOT_INO);
 	if (IS_ERR(root)) {
 		ext4_msg(sb, KERN_ERR, "get root inode failed");
 		ret = PTR_ERR(root);
@@ -4727,7 +4709,7 @@ static struct inode *ext4_get_journal_inode(struct super_block *sb,
 	 * happen if we iget() an unused inode, as the subsequent iput()
 	 * will try to delete it.
 	 */
-	journal_inode = ext4_iget(sb, journal_inum, EXT4_IGET_SPECIAL);
+	journal_inode = ext4_iget(sb, journal_inum);
 	if (IS_ERR(journal_inode)) {
 		ext4_msg(sb, KERN_ERR, "no journal found");
 		return NULL;
@@ -5250,13 +5232,11 @@ static void ext4_umount_end(struct super_block *sb, int flags)
 	 * next boot.
 	 */
 	if ((flags & MNT_FORCE) || atomic_read(&sb->s_active) > 1) {
-		if (test_opt(sb, ERRORS_PANIC)) {
-			ext4_msg(sb, KERN_ERR,
-				"errors=remount-ro for active namespaces on umount %x",
+		ext4_msg(sb, KERN_ERR,
+			"errors=remount-ro for active namespaces on umount %x",
 						flags);
-			clear_opt(sb, ERRORS_PANIC);
-			set_opt(sb, ERRORS_RO);
-		}
+		clear_opt(sb, ERRORS_PANIC);
+		set_opt(sb, ERRORS_RO);
 		/* to write the latest s_kbytes_written */
 		if (!(sb->s_flags & MS_RDONLY))
 			ext4_commit_super(sb, 1);
@@ -5821,7 +5801,7 @@ static int ext4_quota_enable(struct super_block *sb, int type, int format_id,
 	if (!qf_inums[type])
 		return -EPERM;
 
-	qf_inode = ext4_iget(sb, qf_inums[type], EXT4_IGET_SPECIAL);
+	qf_inode = ext4_iget(sb, qf_inums[type]);
 	if (IS_ERR(qf_inode)) {
 		ext4_error(sb, "Bad quota inode # %lu", qf_inums[type]);
 		return PTR_ERR(qf_inode);
@@ -6120,10 +6100,6 @@ static int __init ext4_init_fs(void)
 	if (err)
 		return err;
 
-	err = ext4_init_post_read_processing();
-	if (err)
-		goto out6;
-
 	err = ext4_init_pageio();
 	if (err)
 		goto out5;
@@ -6162,8 +6138,6 @@ out3:
 out4:
 	ext4_exit_pageio();
 out5:
-	ext4_exit_post_read_processing();
-out6:
 	ext4_exit_es();
 
 	return err;
@@ -6180,7 +6154,6 @@ static void __exit ext4_exit_fs(void)
 	ext4_exit_sysfs();
 	ext4_exit_system_zone();
 	ext4_exit_pageio();
-	ext4_exit_post_read_processing();
 	ext4_exit_es();
 }
 

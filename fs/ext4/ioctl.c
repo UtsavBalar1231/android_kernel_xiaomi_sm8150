@@ -111,7 +111,7 @@ static long swap_inode_boot_loader(struct super_block *sb,
 	if (!inode_owner_or_capable(inode) || !capable(CAP_SYS_ADMIN))
 		return -EPERM;
 
-	inode_bl = ext4_iget(sb, EXT4_BOOT_LOADER_INO, EXT4_IGET_SPECIAL);
+	inode_bl = ext4_iget(sb, EXT4_BOOT_LOADER_INO);
 	if (IS_ERR(inode_bl))
 		return PTR_ERR(inode_bl);
 	ei_bl = EXT4_I(inode_bl);
@@ -287,20 +287,6 @@ static int ext4_ioctl_setflags(struct inode *inode,
 			goto flags_out;
 	}
 
-	/*
-	 * Wait for all pending directio and then flush all the dirty pages
-	 * for this file.  The flush marks all the pages readonly, so any
-	 * subsequent attempt to write to the file (particularly mmap pages)
-	 * will come through the filesystem and fail.
-	 */
-	if (S_ISREG(inode->i_mode) && !IS_IMMUTABLE(inode) &&
-	    (flags & EXT4_IMMUTABLE_FL)) {
-		inode_dio_wait(inode);
-		err = filemap_write_and_wait(inode->i_mapping);
-		if (err)
-			goto flags_out;
-	}
-
 	if ((flags ^ oldflags) & EXT4_CASEFOLD_FL) {
 		if (!ext4_has_feature_casefold(sb)) {
 			err = -EOPNOTSUPP;
@@ -316,6 +302,20 @@ static int ext4_ioctl_setflags(struct inode *inode,
 			err = -ENOTEMPTY;
 			goto flags_out;
 		}
+	}
+
+	/*
+	 * Wait for all pending directio and then flush all the dirty pages
+	 * for this file.  The flush marks all the pages readonly, so any
+	 * subsequent attempt to write to the file (particularly mmap pages)
+	 * will come through the filesystem and fail.
+	 */
+	if (S_ISREG(inode->i_mode) && !IS_IMMUTABLE(inode) &&
+	    (flags & EXT4_IMMUTABLE_FL)) {
+		inode_dio_wait(inode);
+		err = filemap_write_and_wait(inode->i_mapping);
+		if (err)
+			goto flags_out;
 	}
 
 	handle = ext4_journal_start(inode, EXT4_HT_INODE, 1);
@@ -1071,39 +1071,7 @@ resizefs_out:
 #endif
 	}
 	case EXT4_IOC_GET_ENCRYPTION_POLICY:
-		if (!ext4_has_feature_encrypt(sb))
-			return -EOPNOTSUPP;
 		return fscrypt_ioctl_get_policy(filp, (void __user *)arg);
-
-	case FS_IOC_GET_ENCRYPTION_POLICY_EX:
-		if (!ext4_has_feature_encrypt(sb))
-			return -EOPNOTSUPP;
-		return fscrypt_ioctl_get_policy_ex(filp, (void __user *)arg);
-
-	case FS_IOC_ADD_ENCRYPTION_KEY:
-		if (!ext4_has_feature_encrypt(sb))
-			return -EOPNOTSUPP;
-		return fscrypt_ioctl_add_key(filp, (void __user *)arg);
-
-	case FS_IOC_REMOVE_ENCRYPTION_KEY:
-		if (!ext4_has_feature_encrypt(sb))
-			return -EOPNOTSUPP;
-		return fscrypt_ioctl_remove_key(filp, (void __user *)arg);
-
-	case FS_IOC_REMOVE_ENCRYPTION_KEY_ALL_USERS:
-		if (!ext4_has_feature_encrypt(sb))
-			return -EOPNOTSUPP;
-		return fscrypt_ioctl_remove_key_all_users(filp,
-							  (void __user *)arg);
-	case FS_IOC_GET_ENCRYPTION_KEY_STATUS:
-		if (!ext4_has_feature_encrypt(sb))
-			return -EOPNOTSUPP;
-		return fscrypt_ioctl_get_key_status(filp, (void __user *)arg);
-
-	case FS_IOC_GET_ENCRYPTION_NONCE:
-		if (!ext4_has_feature_encrypt(sb))
-			return -EOPNOTSUPP;
-		return fscrypt_ioctl_get_nonce(filp, (void __user *)arg);
 
 	case EXT4_IOC_FSGETXATTR:
 	{
@@ -1166,17 +1134,6 @@ out:
 	}
 	case EXT4_IOC_SHUTDOWN:
 		return ext4_shutdown(sb, arg);
-
-	case FS_IOC_ENABLE_VERITY:
-		if (!ext4_has_feature_verity(sb))
-			return -EOPNOTSUPP;
-		return fsverity_ioctl_enable(filp, (const void __user *)arg);
-
-	case FS_IOC_MEASURE_VERITY:
-		if (!ext4_has_feature_verity(sb))
-			return -EOPNOTSUPP;
-		return fsverity_ioctl_measure(filp, (void __user *)arg);
-
 	default:
 		return -ENOTTY;
 	}
@@ -1243,18 +1200,8 @@ long ext4_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	case EXT4_IOC_SET_ENCRYPTION_POLICY:
 	case EXT4_IOC_GET_ENCRYPTION_PWSALT:
 	case EXT4_IOC_GET_ENCRYPTION_POLICY:
-	case FS_IOC_GET_ENCRYPTION_POLICY_EX:
-	case FS_IOC_ADD_ENCRYPTION_KEY:
-	case FS_IOC_REMOVE_ENCRYPTION_KEY:
-	case FS_IOC_REMOVE_ENCRYPTION_KEY_ALL_USERS:
-	case FS_IOC_GET_ENCRYPTION_KEY_STATUS:
-	case FS_IOC_GET_ENCRYPTION_NONCE:
 	case EXT4_IOC_SHUTDOWN:
 	case FS_IOC_GETFSMAP:
-	case FS_IOC_ENABLE_VERITY:
-	case FS_IOC_MEASURE_VERITY:
-	case EXT4_IOC_FSGETXATTR:
-	case EXT4_IOC_FSSETXATTR:
 		break;
 	default:
 		return -ENOIOCTLCMD;

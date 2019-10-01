@@ -25,7 +25,6 @@
 #include "segment.h"
 #include "trace.h"
 #include <trace/events/f2fs.h>
-#include <trace/events/android_fs.h>
 
 #define NUM_PREALLOC_POST_READ_CTXS	128
 
@@ -117,7 +116,6 @@ static enum count_type __read_io_type(struct page *page)
 enum bio_post_read_step {
 	STEP_DECRYPT,
 	STEP_DECOMPRESS,
-	STEP_VERITY,
 };
 
 struct bio_post_read_ctx {
@@ -127,7 +125,7 @@ struct bio_post_read_ctx {
 	unsigned int enabled_steps;
 };
 
-static void __read_end_io(struct bio *bio, bool compr, bool verity)
+static void __read_end_io(struct bio *bio, bool compr)
 {
 	struct page *page;
 	struct bio_vec *bv;
@@ -138,11 +136,9 @@ static void __read_end_io(struct bio *bio, bool compr, bool verity)
 
 #ifdef CONFIG_F2FS_FS_COMPRESSION
 		if (compr && f2fs_is_compressed_page(page)) {
-			f2fs_decompress_pages(bio, page, verity);
+			f2fs_decompress_pages(bio, page);
 			continue;
 		}
-		if (verity)
-			continue;
 #endif
 
 		/* PG_error was set if any post_read step failed */
@@ -159,16 +155,16 @@ static void __read_end_io(struct bio *bio, bool compr, bool verity)
 }
 
 static void f2fs_release_read_bio(struct bio *bio);
-static void __f2fs_read_end_io(struct bio *bio, bool compr, bool verity)
+static void __f2fs_read_end_io(struct bio *bio, bool compr)
 {
 	if (!compr)
-		__read_end_io(bio, false, verity);
+		__read_end_io(bio, false);
 	f2fs_release_read_bio(bio);
 }
 
-static void f2fs_decompress_bio(struct bio *bio, bool verity)
+static void f2fs_decompress_bio(struct bio *bio)
 {
-	__read_end_io(bio, true, verity);
+	__read_end_io(bio, true);
 }
 
 static void bio_post_read_processing(struct bio_post_read_ctx *ctx);
@@ -180,82 +176,7 @@ static void f2fs_decrypt_work(struct bio_post_read_ctx *ctx)
 
 static void f2fs_decompress_work(struct bio_post_read_ctx *ctx)
 {
-	f2fs_decompress_bio(ctx->bio, ctx->enabled_steps & (1 << STEP_VERITY));
-}
-
-#ifdef CONFIG_F2FS_FS_COMPRESSION
-static void f2fs_verify_pages(struct page **rpages, unsigned int cluster_size)
-{
-	f2fs_decompress_end_io(rpages, cluster_size, false, true);
-}
-
-static void f2fs_verify_bio(struct bio *bio)
-{
-	struct bio_vec *bv;
-	int i;
-
-	bio_for_each_segment_all(bv, bio, i) {
-		struct page *page = bv->bv_page;
-		struct decompress_io_ctx *dic;
-
-		dic = (struct decompress_io_ctx *)page_private(page);
-
-		if (dic) {
-			if (refcount_dec_not_one(&dic->ref))
-				continue;
-			f2fs_verify_pages(dic->rpages,
-						dic->cluster_size);
-			f2fs_free_dic(dic);
-			continue;
-		}
-
-		if (bio->bi_status || PageError(page))
-			goto clear_uptodate;
-
-		if (fsverity_verify_page(page)) {
-			SetPageUptodate(page);
-			goto unlock;
-		}
-clear_uptodate:
-		ClearPageUptodate(page);
-		ClearPageError(page);
-unlock:
-		dec_page_count(F2FS_P_SB(page), __read_io_type(page));
-		unlock_page(page);
-	}
-}
-#endif
-
-static void f2fs_verity_work(struct work_struct *work)
-{
-	struct bio_post_read_ctx *ctx =
-		container_of(work, struct bio_post_read_ctx, work);
-	struct bio *bio = ctx->bio;
-#ifdef CONFIG_F2FS_FS_COMPRESSION
-	unsigned int enabled_steps = ctx->enabled_steps;
-#endif
-
-	/*
-	 * fsverity_verify_bio() may call readpages() again, and while verity
-	 * will be disabled for this, decryption may still be needed, resulting
-	 * in another bio_post_read_ctx being allocated.  So to prevent
-	 * deadlocks we need to release the current ctx to the mempool first.
-	 * This assumes that verity is the last post-read step.
-	 */
-	mempool_free(ctx, bio_post_read_ctx_pool);
-	bio->bi_private = NULL;
-
-#ifdef CONFIG_F2FS_FS_COMPRESSION
-	/* previous step is decompression */
-	if (enabled_steps & (1 << STEP_DECOMPRESS)) {
-		f2fs_verify_bio(bio);
-		f2fs_release_read_bio(bio);
-		return;
-	}
-#endif
-
-	fsverity_verify_bio(bio);
-	__f2fs_read_end_io(bio, false, false);
+	f2fs_decompress_bio(ctx->bio);
 }
 
 static void f2fs_post_read_work(struct work_struct *work)
@@ -269,14 +190,8 @@ static void f2fs_post_read_work(struct work_struct *work)
 	if (ctx->enabled_steps & (1 << STEP_DECOMPRESS))
 		f2fs_decompress_work(ctx);
 
-	if (ctx->enabled_steps & (1 << STEP_VERITY)) {
-		INIT_WORK(&ctx->work, f2fs_verity_work);
-		fsverity_enqueue_verify_work(&ctx->work);
-		return;
-	}
-
 	__f2fs_read_end_io(ctx->bio,
-		ctx->enabled_steps & (1 << STEP_DECOMPRESS), false);
+		ctx->enabled_steps & (1 << STEP_DECOMPRESS));
 }
 
 static void f2fs_enqueue_post_read_work(struct f2fs_sb_info *sbi,
@@ -287,12 +202,6 @@ static void f2fs_enqueue_post_read_work(struct f2fs_sb_info *sbi,
 
 static void bio_post_read_processing(struct bio_post_read_ctx *ctx)
 {
-	/*
-	 * We use different work queues for decryption and for verity because
-	 * verity may require reading metadata pages that need decryption, and
-	 * we shouldn't recurse to the same workqueue.
-	 */
-
 	if (ctx->enabled_steps & (1 << STEP_DECRYPT) ||
 		ctx->enabled_steps & (1 << STEP_DECOMPRESS)) {
 		INIT_WORK(&ctx->work, f2fs_post_read_work);
@@ -300,13 +209,7 @@ static void bio_post_read_processing(struct bio_post_read_ctx *ctx)
 		return;
 	}
 
-	if (ctx->enabled_steps & (1 << STEP_VERITY)) {
-		INIT_WORK(&ctx->work, f2fs_verity_work);
-		fsverity_enqueue_verify_work(&ctx->work);
-		return;
-	}
-
-	__f2fs_read_end_io(ctx->bio, false, false);
+	__f2fs_read_end_io(ctx->bio, false);
 }
 
 static bool f2fs_bio_post_read_required(struct bio *bio)
@@ -330,7 +233,7 @@ static void f2fs_read_end_io(struct bio *bio)
 		return;
 	}
 
-	__f2fs_read_end_io(bio, false, false);
+	__f2fs_read_end_io(bio, false);
 }
 
 static void f2fs_write_end_io(struct bio *bio)
@@ -509,9 +412,6 @@ submit_io:
 	submit_bio(bio);
 }
 
-/*<<<static void __f2fs_submit_read_bio(struct f2fs_sb_info *sbi,
-				struct bio *bio, enum page_type type)
-*/
 void f2fs_submit_bio(struct f2fs_sb_info *sbi,
 				struct bio *bio, enum page_type type)
 {
@@ -684,12 +584,13 @@ int f2fs_submit_page_bio(struct f2fs_io_info *fio)
 
 	if (f2fs_may_encrypt_bio(inode, fio))
 		fscrypt_set_ice_dun(inode, bio, PG_DUN(inode, fio->page));
-	fscrypt_set_ice_skip(bio, f2fs_encrypted_file(inode));
+	fscrypt_set_ice_skip(bio, fio->encrypted_page ? 1 : 0);
 
 	if (bio_add_page(bio, page, PAGE_SIZE, 0) < PAGE_SIZE) {
 		bio_put(bio);
 		return -EFAULT;
 	}
+	fio->op_flags |= fio->encrypted_page ? REQ_NOENCRYPT : 0;
 
 	if (fio->io_wbc && !is_read_io(fio->op))
 		wbc_account_io(fio->io_wbc, page, PAGE_SIZE);
@@ -866,7 +767,7 @@ int f2fs_merge_page_bio(struct f2fs_io_info *fio)
 	struct bio *bio = *fio->bio;
 	struct page *page = fio->encrypted_page ?
 			fio->encrypted_page : fio->page;
-	struct inode *inode = fio->page->mapping->host;
+	struct inode *inode;
 	bool bio_encrypted;
 	int bi_crypt_skip;
 	u64 dun;
@@ -878,16 +779,19 @@ int f2fs_merge_page_bio(struct f2fs_io_info *fio)
 	trace_f2fs_submit_page_bio(page, fio);
 	f2fs_trace_ios(fio, 0);
 
+	inode = fio->page->mapping->host;
 	dun = PG_DUN(inode, fio->page);
-	bi_crypt_skip = f2fs_encrypted_file(inode);
+	bi_crypt_skip = fio->encrypted_page ? 1 : 0;
 	bio_encrypted = f2fs_may_encrypt_bio(inode, fio);
+	fio->op_flags |= fio->encrypted_page ? REQ_NOENCRYPT : 0;
 
 	if (bio && !page_is_mergeable(fio->sbi, bio, *fio->last_block,
 						fio->new_blkaddr))
 		f2fs_submit_merged_ipu_write(fio->sbi, &bio, NULL);
 
 	/* ICE support */
-	if (!fscrypt_mergeable_bio(bio, dun, bio_encrypted, bi_crypt_skip))
+	if (bio && !fscrypt_mergeable_bio(bio, dun,
+				bio_encrypted, bi_crypt_skip))
 		f2fs_submit_merged_ipu_write(fio->sbi, &bio, NULL);
 
 alloc_new:
@@ -950,10 +854,12 @@ next:
 		bio_page = fio->compressed_page;
 	else
 		bio_page = fio->page;
+
 	inode = fio->page->mapping->host;
 	dun = PG_DUN(inode, fio->page);
-	bi_crypt_skip = f2fs_encrypted_file(inode);
+	bi_crypt_skip = fio->encrypted_page ? 1 : 0;
 	bio_encrypted = f2fs_may_encrypt_bio(inode, fio);
+	fio->op_flags |= fio->encrypted_page ? REQ_NOENCRYPT : 0;
 
 	/* set submitted = true as a return value */
 	fio->submitted = true;
@@ -1006,15 +912,9 @@ out:
 	up_write(&io->io_rwsem);
 }
 
-static inline bool f2fs_need_verity(const struct inode *inode, pgoff_t idx)
-{
-	return fsverity_active(inode) &&
-	       idx < DIV_ROUND_UP(inode->i_size, PAGE_SIZE);
-}
-
 static struct bio *f2fs_grab_read_bio(struct inode *inode, block_t blkaddr,
 				      unsigned nr_pages, unsigned op_flag,
-				      pgoff_t first_idx, bool for_write)
+				      bool for_write)
 {
 	struct f2fs_sb_info *sbi = F2FS_I_SB(inode);
 	struct bio *bio;
@@ -1027,15 +927,16 @@ static struct bio *f2fs_grab_read_bio(struct inode *inode, block_t blkaddr,
 		return ERR_PTR(-ENOMEM);
 	f2fs_target_device(sbi, blkaddr, bio);
 	bio->bi_end_io = f2fs_read_end_io;
-	bio_set_op_attrs(bio, REQ_OP_READ, op_flag);
+	bio_set_op_attrs(bio, REQ_OP_READ,
+			 (IS_ENCRYPTED(inode) ?
+			  REQ_NOENCRYPT :
+			  op_flag));
 
 	if (f2fs_encrypted_file(inode) &&
-	    !fscrypt_using_hardware_encryption(inode))
+		!fscrypt_using_hardware_encryption(inode))
 		post_read_steps |= 1 << STEP_DECRYPT;
 	if (f2fs_compressed_file(inode))
 		post_read_steps |= 1 << STEP_DECOMPRESS;
-	if (f2fs_need_verity(inode, first_idx))
-		post_read_steps |= 1 << STEP_VERITY;
 
 	if (post_read_steps) {
 		/* Due to the mempool, this never fails. */
@@ -1063,7 +964,7 @@ static int f2fs_submit_page_read(struct inode *inode, struct page *page,
 	struct f2fs_sb_info *sbi = F2FS_I_SB(inode);
 	struct bio *bio;
 
-	bio = f2fs_grab_read_bio(inode, blkaddr, 1, 0, page->index, for_write);
+	bio = f2fs_grab_read_bio(inode, blkaddr, 1, 0, for_write);
 	if (IS_ERR(bio))
 		return PTR_ERR(bio);
 
@@ -2023,15 +1924,6 @@ out:
 	return ret;
 }
 
-static inline loff_t f2fs_readpage_limit(struct inode *inode)
-{
-	if (IS_ENABLED(CONFIG_FS_VERITY) &&
-	    (IS_VERITY(inode) || f2fs_verity_in_progress(inode)))
-		return inode->i_sb->s_maxbytes;
-
-	return i_size_read(inode);
-}
-
 static int f2fs_read_single_page(struct inode *inode, struct page *page,
 					unsigned nr_pages,
 					struct f2fs_map_blocks *map,
@@ -2046,13 +1938,13 @@ static int f2fs_read_single_page(struct inode *inode, struct page *page,
 	sector_t last_block;
 	sector_t last_block_in_file;
 	sector_t block_nr;
+	int ret = 0;
 	bool bio_encrypted;
 	u64 dun;
-	int ret = 0;
 
 	block_in_file = (sector_t)page_index(page);
 	last_block = block_in_file + nr_pages;
-	last_block_in_file = (f2fs_readpage_limit(inode) + blocksize - 1) >>
+	last_block_in_file = (i_size_read(inode) + blocksize - 1) >>
 							blkbits;
 	if (last_block > last_block_in_file)
 		last_block = last_block_in_file;
@@ -2097,11 +1989,6 @@ got_it:
 	} else {
 zero_out:
 		zero_user_segment(page, 0, PAGE_SIZE);
-		if (f2fs_need_verity(inode, page->index) &&
-		    !fsverity_verify_page(page)) {
-			ret = -EIO;
-			goto out;
-		}
 		if (!PageUptodate(page))
 			SetPageUptodate(page);
 		unlock_page(page);
@@ -2128,8 +2015,7 @@ submit_and_realloc:
 
 	if (bio == NULL) {
 		bio = f2fs_grab_read_bio(inode, block_nr, nr_pages,
-				is_readahead ? REQ_RAHEAD : 0, page->index,
-				false);
+				is_readahead ? REQ_RAHEAD : 0, false);
 		if (IS_ERR(bio)) {
 			ret = PTR_ERR(bio);
 			bio = NULL;
@@ -2178,8 +2064,6 @@ int f2fs_read_multi_pages(struct compress_ctx *cc, struct bio **bio_ret,
 	const unsigned blkbits = inode->i_blkbits;
 	const unsigned blocksize = 1 << blkbits;
 	struct decompress_io_ctx *dic = NULL;
-	bool bio_encrypted;
-	u64 dun;
 	int i;
 	int ret = 0;
 
@@ -2261,17 +2145,10 @@ submit_and_realloc:
 			bio = NULL;
 		}
 
-		dun = PG_DUN(inode, page);
-		bio_encrypted = f2fs_may_encrypt_bio(inode, NULL);
-		if (!fscrypt_mergeable_bio(bio, dun, bio_encrypted, 0)) {
-			__submit_bio(sbi, bio, DATA);
-			bio = NULL;
-		}
-
 		if (!bio) {
 			bio = f2fs_grab_read_bio(inode, blkaddr, nr_pages,
 					is_readahead ? REQ_RAHEAD : 0,
-					page->index, for_write);
+					for_write);
 			if (IS_ERR(bio)) {
 				ret = PTR_ERR(bio);
 				bio = NULL;
@@ -2279,15 +2156,12 @@ submit_and_realloc:
 				if (refcount_sub_and_test(dic->nr_cpages - i,
 							&dic->ref))
 					f2fs_decompress_end_io(dic->rpages,
-							cc->cluster_size, true,
-							false);
+							cc->cluster_size, true);
 				f2fs_free_dic(dic);
 				f2fs_put_dnode(&dn);
 				*bio_ret = bio;
 				return ret;
 			}
-			if (bio_encrypted)
-				fscrypt_set_ice_dun(inode, bio, dun);
 		}
 
 		f2fs_wait_on_block_writeback(inode, blkaddr);
@@ -2309,7 +2183,7 @@ submit_and_realloc:
 out_put_dnode:
 	f2fs_put_dnode(&dn);
 out:
-	f2fs_decompress_end_io(cc->rpages, cc->cluster_size, true, false);
+	f2fs_decompress_end_io(cc->rpages, cc->cluster_size, true);
 	*bio_ret = bio;
 	return ret;
 }
@@ -2407,7 +2281,6 @@ set_error_page:
 			zero_user_segment(page, 0, PAGE_SIZE);
 			unlock_page(page);
 		}
-
 next_page:
 		if (pages)
 			put_page(page);
@@ -2762,7 +2635,6 @@ int f2fs_write_single_data_page(struct page *page, int *submitted,
 		goto redirty_out;
 
 	if (page->index < end_index ||
-			f2fs_verity_in_progress(inode) ||
 			compr_blocks)
 		goto write;
 
@@ -3085,8 +2957,12 @@ result:
 					ret = 0;
 					if (wbc->sync_mode == WB_SYNC_ALL) {
 						cond_resched();
+#if (CONFIG_HZ > 100)
 						congestion_wait(BLK_RW_ASYNC,
 							DEFAULT_IO_TIMEOUT);
+#else
+						congestion_wait(BLK_RW_ASYNC, 1);
+#endif
 						goto retry_write;
 					}
 					goto next;
@@ -3246,8 +3122,7 @@ static void f2fs_write_failed(struct address_space *mapping, loff_t to)
 	if (IS_NOQUOTA(inode))
 		return;
 
-	/* In the fs-verity case, f2fs_end_enable_verity() does the truncate */
-	if (to > i_size && !f2fs_verity_in_progress(inode)) {
+	if (to > i_size) {
 		down_write(&F2FS_I(inode)->i_gc_rwsem[WRITE]);
 		down_write(&F2FS_I(inode)->i_mmap_sem);
 
@@ -3277,8 +3152,7 @@ static int prepare_write_begin(struct f2fs_sb_info *sbi,
 	 * the block addresses when there is no need to fill the page.
 	 */
 	if (!f2fs_has_inline_data(inode) && len == PAGE_SIZE &&
-	    !is_inode_flag_set(inode, FI_NO_PREALLOC) &&
-	    !f2fs_verity_in_progress(inode))
+			!is_inode_flag_set(inode, FI_NO_PREALLOC))
 		return 0;
 
 	/* f2fs_lock_op avoids race between write CP and convert_inline_page */
@@ -3358,16 +3232,6 @@ static int f2fs_write_begin(struct file *file, struct address_space *mapping,
 	block_t blkaddr = NULL_ADDR;
 	int err = 0;
 
-	if (trace_android_fs_datawrite_start_enabled()) {
-		char *path, pathbuf[MAX_TRACE_PATHBUF_LEN];
-
-		path = android_fstrace_get_pathname(pathbuf,
-						    MAX_TRACE_PATHBUF_LEN,
-						    inode);
-		trace_android_fs_datawrite_start(inode, pos, len,
-						 current->pid, path,
-						 current->comm);
-	}
 	trace_f2fs_write_begin(inode, pos, len, flags);
 
 	if (!f2fs_is_checkpoint_ready(sbi)) {
@@ -3449,8 +3313,7 @@ repeat:
 	if (len == PAGE_SIZE || PageUptodate(page))
 		return 0;
 
-	if (!(pos & (PAGE_SIZE - 1)) && (pos + len) >= i_size_read(inode) &&
-	    !f2fs_verity_in_progress(inode)) {
+	if (!(pos & (PAGE_SIZE - 1)) && (pos + len) >= i_size_read(inode)) {
 		zero_user_segment(page, len, PAGE_SIZE);
 		return 0;
 	}
@@ -3495,7 +3358,6 @@ static int f2fs_write_end(struct file *file,
 {
 	struct inode *inode = page->mapping->host;
 
-	trace_android_fs_datawrite_end(inode, pos, len);
 	trace_f2fs_write_end(inode, pos, len, copied);
 
 	/*
@@ -3524,8 +3386,7 @@ static int f2fs_write_end(struct file *file,
 
 	set_page_dirty(page);
 
-	if (pos + copied > i_size_read(inode) &&
-	    !f2fs_verity_in_progress(inode))
+	if (pos + copied > i_size_read(inode))
 		f2fs_i_size_write(inode, pos + copied);
 unlock_out:
 	f2fs_put_page(page, 1);
@@ -3622,28 +3483,6 @@ static ssize_t f2fs_direct_IO(struct kiocb *iocb, struct iov_iter *iter)
 
 	trace_f2fs_direct_IO_enter(inode, offset, count, rw);
 
-	if (trace_android_fs_dataread_start_enabled() &&
-	    (rw == READ)) {
-		char *path, pathbuf[MAX_TRACE_PATHBUF_LEN];
-
-		path = android_fstrace_get_pathname(pathbuf,
-						    MAX_TRACE_PATHBUF_LEN,
-						    inode);
-		trace_android_fs_dataread_start(inode, offset,
-						count, current->pid, path,
-						current->comm);
-	}
-	if (trace_android_fs_datawrite_start_enabled() &&
-	    (rw == WRITE)) {
-		char *path, pathbuf[MAX_TRACE_PATHBUF_LEN];
-
-		path = android_fstrace_get_pathname(pathbuf,
-						    MAX_TRACE_PATHBUF_LEN,
-						    inode);
-		trace_android_fs_datawrite_start(inode, offset, count,
-						 current->pid, path,
-						 current->comm);
-	}
 	if (rw == WRITE && whint_mode == WHINT_MODE_OFF)
 		iocb->ki_hint = WRITE_LIFE_NOT_SET;
 
@@ -3691,14 +3530,8 @@ static ssize_t f2fs_direct_IO(struct kiocb *iocb, struct iov_iter *iter)
 		if (err > 0)
 			f2fs_update_iostat(sbi, APP_DIRECT_READ_IO, err);
 	}
-out:
-	if (trace_android_fs_dataread_start_enabled() &&
-	    (rw == READ))
-		trace_android_fs_dataread_end(inode, offset, count);
-	if (trace_android_fs_datawrite_start_enabled() &&
-	    (rw == WRITE))
-		trace_android_fs_datawrite_end(inode, offset, count);
 
+out:
 	trace_f2fs_direct_IO_exit(inode, offset, count, rw, err);
 
 	return err;
@@ -4083,7 +3916,6 @@ void f2fs_destroy_post_read_processing(void)
 int f2fs_init_post_read_wq(struct f2fs_sb_info *sbi)
 {
 	if (!f2fs_sb_has_encrypt(sbi) &&
-		!f2fs_sb_has_verity(sbi) &&
 		!f2fs_sb_has_compression(sbi))
 		return 0;
 

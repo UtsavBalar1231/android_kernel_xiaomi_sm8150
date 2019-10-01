@@ -18,11 +18,6 @@
 #include "node.h"
 #include <trace/events/f2fs.h>
 
-/* Some architectures don't have PAGE_KERNEL_RO */
-#ifndef PAGE_KERNEL_RO
-#define PAGE_KERNEL_RO PAGE_KERNEL
-#endif
-
 struct f2fs_compress_ops {
 	int (*init_compress_ctx)(struct compress_ctx *cc);
 	void (*destroy_compress_ctx)(struct compress_ctx *cc);
@@ -654,7 +649,7 @@ out:
 	return ret;
 }
 
-void f2fs_decompress_pages(struct bio *bio, struct page *page, bool verity)
+void f2fs_decompress_pages(struct bio *bio, struct page *page)
 {
 	struct decompress_io_ctx *dic =
 			(struct decompress_io_ctx *)page_private(page);
@@ -717,16 +712,12 @@ destroy_decompress_ctx:
 	if (cops->destroy_decompress_ctx)
 		cops->destroy_decompress_ctx(dic);
 out_free_dic:
-	if (verity)
-		refcount_set(&dic->ref, dic->nr_cpages);
-	if (!verity)
-		f2fs_decompress_end_io(dic->rpages, dic->cluster_size,
-								ret, false);
+	f2fs_decompress_end_io(dic->rpages, dic->cluster_size, ret);
 
 	trace_f2fs_decompress_pages_end(dic->inode, dic->cluster_idx,
 							dic->clen, ret);
-	if (!verity)
-		f2fs_free_dic(dic);
+
+	f2fs_free_dic(dic);
 }
 
 static bool is_page_in_cluster(struct compress_ctx *cc, pgoff_t index)
@@ -1140,8 +1131,7 @@ static int f2fs_write_compressed_pages(struct compress_ctx *cc,
 			err = f2fs_encrypt_one_page(&fio);
 			if (err)
 				goto out_destroy_crypt;
-			if (!fscrypt_using_hardware_encryption(inode))
-				cc->cpages[i] = fio.encrypted_page;
+			cc->cpages[i] = fio.encrypted_page;
 		}
 	}
 
@@ -1180,7 +1170,7 @@ static int f2fs_write_compressed_pages(struct compress_ctx *cc,
 
 		f2fs_bug_on(fio.sbi, blkaddr == NULL_ADDR);
 
-		if (fio.encrypted && !fscrypt_using_hardware_encryption(inode))
+		if (fio.encrypted)
 			fio.encrypted_page = cc->cpages[i - 1];
 		else
 			fio.compressed_page = cc->cpages[i - 1];
@@ -1466,7 +1456,7 @@ void f2fs_free_dic(struct decompress_io_ctx *dic)
 }
 
 void f2fs_decompress_end_io(struct page **rpages,
-			unsigned int cluster_size, bool err, bool verity)
+			unsigned int cluster_size, bool err)
 {
 	int i;
 
@@ -1476,17 +1466,12 @@ void f2fs_decompress_end_io(struct page **rpages,
 		if (!rpage)
 			continue;
 
-		if (err || PageError(rpage))
-			goto clear_uptodate;
-
-		if (!verity || fsverity_verify_page(rpage)) {
-			SetPageUptodate(rpage);
-			goto unlock;
+		if (err || PageError(rpage)) {
+			ClearPageUptodate(rpage);
+			ClearPageError(rpage);
+		} else {
+			SetPageError(rpage);
 		}
-clear_uptodate:
-		ClearPageUptodate(rpage);
-		ClearPageError(rpage);
-unlock:
 		unlock_page(rpage);
 	}
 }
