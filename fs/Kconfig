@@ -15,6 +15,7 @@ config FS_IOMAP
 
 source "fs/ext2/Kconfig"
 source "fs/ext4/Kconfig"
+source "fs/exfat/Kconfig"
 source "fs/jbd2/Kconfig"
 
 config FS_MBCACHE
