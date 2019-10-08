@@ -1,0 +1,28 @@
+kind: pipeline
+name: android_kernel_xiaomi_sm8150
+
+platform:
+  os: linux
+  arch: amd64
+
+clone:
+  depth: 1
+
+steps:
+  - name: immensity_kernel
+    image: ubuntu:latest
+    environment:
+      CI_CHANNEL_ID:
+        from_secret: ci_channel_id
+      BOT_API_KEY:
+        from_secret: bot_api_key
+      RELEASE_VERSION: "r1"
+      RELEASE_CODENAME: "Linux-Stable"
+    commands:
+      - apt-get update && apt-get install -y bison build-essential bc bison curl libssl-dev git zip python flex
+      - git clone https://github.com/UtsavisGreat/scripts.git -b master script && cd script
+      - bash dronesetup.sh
+      - bash kernel.sh
+    when:
+      branch:
+        - linux-stable
