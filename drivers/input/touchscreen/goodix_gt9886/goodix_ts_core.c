@@ -778,11 +778,11 @@ static int goodix_ts_input_report(struct input_dev *dev,
 			input_report_key(core_data->input_dev, BTN_INFO, 1);
 			/*input_report_key(core_data->input_dev, KEY_INFO, 1);*/
 			core_data->fod_pressed = true;
-			ts_info("BTN_INFO press");
+			ts_debug("BTN_INFO press");
 		} else if (core_data->fod_pressed && (core_data->event_status & 0x88) != 0x88) {
 			input_report_key(core_data->input_dev, BTN_INFO, 0);
 			/*input_report_key(core_data->input_dev, KEY_INFO, 0);*/
-			ts_info("BTN_INFO release");
+			ts_debug("BTN_INFO release");
 			core_data->fod_pressed = false;
 		}
 	}
