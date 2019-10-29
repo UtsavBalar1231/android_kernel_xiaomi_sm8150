@@ -238,7 +238,7 @@ static void sugov_update_commit(struct sugov_policy *sg_policy, u64 time,
 
 		policy->cur = next_freq;
 	} else {
-		if (use_pelt())
+		if (likely(use_pelt()))
 			sg_policy->work_in_progress = true;
 		sched_irq_work_queue(&sg_policy->irq_work);
 	}
@@ -594,7 +594,7 @@ static void sugov_work(struct kthread_work *work)
 				CPUFREQ_RELATION_L);
 	mutex_unlock(&sg_policy->work_lock);
 
-	if (use_pelt())
+	if (likely(use_pelt()))
 		sg_policy->work_in_progress = false;
 }
 
