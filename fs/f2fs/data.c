@@ -684,7 +684,7 @@ int f2fs_submit_page_bio(struct f2fs_io_info *fio)
 
 	if (f2fs_may_encrypt_bio(inode, fio))
 		fscrypt_set_ice_dun(inode, bio, PG_DUN(inode, fio->page));
-	fscrypt_set_ice_skip(bio, fio->encrypted_page ? 1 : 0);
+	fscrypt_set_ice_skip(bio, f2fs_encrypted_file(inode));
 
 	if (bio_add_page(bio, page, PAGE_SIZE, 0) < PAGE_SIZE) {
 		bio_put(bio);
@@ -880,7 +880,7 @@ int f2fs_merge_page_bio(struct f2fs_io_info *fio)
 
 	inode = fio->page->mapping->host;
 	dun = PG_DUN(inode, fio->page);
-	bi_crypt_skip = fio->encrypted_page ? 1 : 0;
+	bi_crypt_skip = f2fs_encrypted_file(inode);
 	bio_encrypted = f2fs_may_encrypt_bio(inode, fio);
 	fio->op_flags |= fio->encrypted_page ? REQ_NOENCRYPT : 0;
 
@@ -955,7 +955,7 @@ next:
 		bio_page = fio->page;
 	inode = fio->page->mapping->host;
 	dun = PG_DUN(inode, fio->page);
-	bi_crypt_skip = fio->encrypted_page ? 1 : 0;
+	bi_crypt_skip = f2fs_encrypted_file(inode);
 	bio_encrypted = f2fs_may_encrypt_bio(inode, fio);
 
 	/* set submitted = true as a return value */
