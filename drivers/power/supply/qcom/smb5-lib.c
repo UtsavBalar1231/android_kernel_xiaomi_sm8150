@@ -3767,7 +3767,7 @@ int smblib_set_prop_dc_reset(struct smb_charger *chg)
 
 	rc = smblib_write(chg, DCIN_CMD_PON_REG, DCIN_PON_BIT | MID_CHG_BIT);
 	if (rc < 0) {
-		smblib_err(chg, "Couldn't write %d to DCIN_CMD_PON_REG rc=%d\n",
+		smblib_err(chg, "Couldn't write %ld to DCIN_CMD_PON_REG rc=%d\n",
 			DCIN_PON_BIT | MID_CHG_BIT, rc);
 		return rc;
 	}
@@ -8256,7 +8256,7 @@ static void apsd_timer_cb(unsigned long data)
 {
 	struct smb_charger *chg = (struct smb_charger *)data;
 
-	smblib_dbg(chg, PR_MISC, "APSD Extented timer timeout at %lld\n",
+	smblib_dbg(chg, PR_MISC, "APSD Extented timer timeout at %d\n",
 			jiffies_to_msecs(jiffies));
 
 	chg->apsd_ext_timeout = true;
