@@ -1596,6 +1596,12 @@ config MACH_XIAOMI_RAPHAEL
         help
           Support for Xiaomi K20 Pro
 
+config MACH_XIAOMI_CEPHEUS
+        bool "polaris board"
+        select MACH_XIAOMI_SM8150
+        help
+          Support for Xiaomi MI 9
+
 endmenu
 
 endmenu
