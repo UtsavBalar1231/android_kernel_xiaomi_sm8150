@@ -949,7 +949,7 @@ error:
 	vfree(e_ctrl->cal_data.map);
 	e_ctrl->cal_data.num_data = 0;
 	e_ctrl->cal_data.num_map = 0;
-	e_ctrl->cam_eeprom_state = CAM_EEPROM_ACQUIRE;
+	e_ctrl->cam_eeprom_state = CAM_EEPROM_INIT;
 release_buf:
 	if (cam_mem_put_cpu_buf(dev_config.packet_handle))
 		CAM_WARN(CAM_EEPROM, "Put cpu buffer failed : 0x%llx",
