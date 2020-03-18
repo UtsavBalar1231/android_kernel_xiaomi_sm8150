@@ -4467,7 +4467,7 @@ CONFIG_HAVE_ARM_SMCCC=y
 #
 # Tegra firmware driver
 #
-# CONFIG_MSM_TZ_LOG is not set
+CONFIG_MSM_TZ_LOG=y
 
 #
 # File systems
