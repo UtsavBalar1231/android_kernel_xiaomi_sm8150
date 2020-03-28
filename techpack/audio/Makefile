@@ -76,3 +76,5 @@ endif
 #for mius end
 obj-y += ipc/
 obj-y += asoc/
+
+ccflags-y += $(DISABLE_CFI)
