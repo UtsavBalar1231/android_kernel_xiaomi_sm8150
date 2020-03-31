@@ -213,14 +213,14 @@
 };
 
 &dsi_sharp_1080_cmd {
-       qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
-       qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
-       qcom,mdss-dsi-bl-min-level = <1>;
-       qcom,mdss-dsi-bl-max-level = <4095>;
-       qcom,mdss-dsi-mode-sel-gpio-state = "dual_port";
-       qcom,panel-mode-gpio = <&tlmm 7 0>;
-       qcom,platform-te-gpio = <&tlmm 8 0>;
-       qcom,platform-reset-gpio = <&tlmm 6 0>;
+	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
+	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
+	qcom,mdss-dsi-bl-min-level = <1>;
+	qcom,mdss-dsi-bl-max-level = <4095>;
+	qcom,mdss-dsi-mode-sel-gpio-state = "dual_port";
+	qcom,panel-mode-gpio = <&tlmm 7 0>;
+	qcom,platform-te-gpio = <&tlmm 8 0>;
+	qcom,platform-reset-gpio = <&tlmm 6 0>;
 };
 
 &dsi_nt35695b_truly_fhd_cmd {
@@ -319,7 +319,7 @@
 	vdd-hba-supply = <&ufs_phy_gdsc>;
 	vdd-hba-fixed-regulator;
 	vcc-supply = <&pm8150_l10>;
-        vcc-voltage-level = <2950000 2960000>;
+	vcc-voltage-level = <2950000 2960000>;
 	vccq2-supply = <&pm8150_s4>;
 	vcc-max-microamp = <750000>;
 	vccq2-max-microamp = <750000>;
@@ -395,15 +395,15 @@
 
 &usb1 {
 	extcon = <&extcon_usb1>;
-        status = "ok";
+	status = "ok";
 };
 
 &usb2_phy1 {
-        status = "ok";
+	status = "ok";
 };
 
 &usb_qmp_phy {
-        status = "ok";
+	status = "ok";
 };
 
 &reserved_memory {

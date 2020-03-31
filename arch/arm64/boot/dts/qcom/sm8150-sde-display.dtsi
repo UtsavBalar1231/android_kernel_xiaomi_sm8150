@@ -508,11 +508,11 @@
 
 	dsi_rm69299_visionox_amoled_vid_display: qcom,dsi-display@26 {
 		label = "dsi_rm69299_visionox_amoled_vid_display";
-                qcom,display-type = "primary";
+		qcom,display-type = "primary";
 
-                qcom,dsi-ctrl-num = <0>;
-                qcom,dsi-phy-num = <0>;
-                qcom,dsi-select-clocks = "mux_byte_clk0", "mux_pixel_clk0";
+		qcom,dsi-ctrl-num = <0>;
+		qcom,dsi-phy-num = <0>;
+		qcom,dsi-select-clocks = "mux_byte_clk0", "mux_pixel_clk0";
 
 		qcom,dsi-panel = <&dsi_rm69299_visionox_amoled_video>;
 	};
