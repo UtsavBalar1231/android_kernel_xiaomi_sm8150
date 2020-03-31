@@ -67,7 +67,7 @@
 atomic_t fw_update_mode = ATOMIC_INIT(1);
 
 /**
- * fw_subsys_info - subsytem firmware infomation
+ * fw_subsys_info - subsytem firmware information
  * @type: sybsystem type
  * @size: firmware size
  * @flash_addr: flash address
@@ -113,7 +113,7 @@ struct firmware_info {
 
 /**
  * firmware_data - firmware data structure
- * @fw_info: firmware infomation
+ * @fw_info: firmware information
  * @firmware: firmware data structure
  */
 struct firmware_data {
@@ -131,7 +131,7 @@ enum update_status {
 };
 
 /**
- * fw_update_ctrl - sturcture used to control the
+ * fw_update_ctrl - structure used to control the
  *  firmware update process
  * @status: update status
  * @progress: indicate the progress of update
@@ -163,8 +163,8 @@ struct fw_update_ctrl {
 };
 
 /**
- * goodix_parse_firmware - parse firmware header infomation
- * and subsystem infomation from firmware data buffer
+ * goodix_parse_firmware - parse firmware header information
+ * and subsystem information from firmware data buffer
  *
  * @fw_data: firmware struct, contains firmware header info
  * and firmware data.
@@ -238,8 +238,8 @@ static int goodix_parse_firmware(struct firmware_data *fw_data)
 	}
 
 	ts_info("Firmware package protocol: V%u", fw_info->protocol_ver);
-	ts_info("Fimware PID:GT%s", fw_info->fw_pid);
-	ts_info("Fimware VID:0x%02X %02X %02X %02x", fw_info->fw_vid[0],
+	ts_info("Firmware PID:GT%s", fw_info->fw_pid);
+	ts_info("Firmware VID:0x%02X %02X %02X %02x", fw_info->fw_vid[0],
 			fw_info->fw_vid[1], fw_info->fw_vid[2], fw_info->fw_vid[3]);
 	ts_info("Firmware chip type:0x%02X", fw_info->chip_type);
 	ts_info("Firmware size:%u", fw_info->size);
@@ -263,7 +263,7 @@ err_size:
 /**
  * goodix_check_update - compare the version of firmware running in
  *  touch device with the version getting from the firmware file.
- * @fw_info: firmware infomation to be compared
+ * @fw_info: firmware information to be compared
  * return: 0 firmware in the touch device needs to be updated
  * < 0 no need to update firmware
  */
@@ -276,24 +276,24 @@ static int goodix_check_update(struct goodix_ts_device *dev,
 	int res = 0;
 
 	/* read version from chip, if we got invalid
-	 * firmware version, maybe fimware in flash is
+	 * firmware version, maybe firmware in flash is
 	 * incorrect, so we need to update firmware */
 	r = dev->hw_ops->read_version(dev, &fw_ver);
 	if (r == -EBUS)
 		return r;
 
 	if (fw_ver.valid) {
-		ts_info("pid_len=%d\n",dev->reg.pid_len);
-		ts_info("tp.pid=%s fw.pid=%s\n",fw_ver.pid,fw_info->fw_pid);
+		ts_info("pid_len=%d\n", dev->reg.pid_len);
+		ts_info("tp.pid=%s fw.pid=%s\n", fw_ver.pid, fw_info->fw_pid);
 		if (memcmp(fw_ver.pid, fw_info->fw_pid, dev->reg.pid_len)) {
-			ts_err("tp.pid=0x%x fw.pid=0x%x\n",fw_ver.pid,fw_info->fw_pid);
+			ts_err("tp.pid=0x%x fw.pid=0x%x\n", fw_ver.pid, fw_info->fw_pid);
 			ts_err("Product ID is not match");
 			return -EPERM;
 		}
 
-		ts_info("vid_len=%d\n",dev->reg.vid_len);
-		ts_info("Touchpanel VID:0x%02x 0x%02x 0x%02x 0x%02x",fw_ver.vid[0], fw_ver.vid[1], fw_ver.vid[2], fw_ver.vid[3]);
-		ts_info("Fimware    VID:0x%02X 0x%02x 0x%02x 0x%02x", fw_info->fw_vid[0], fw_info->fw_vid[1], fw_info->fw_vid[2], fw_info->fw_vid[3]);
+		ts_info("vid_len=%d\n", dev->reg.vid_len);
+		ts_info("Touchpanel VID:0x%02x 0x%02x 0x%02x 0x%02x", fw_ver.vid[0], fw_ver.vid[1], fw_ver.vid[2], fw_ver.vid[3]);
+		ts_info("Firmware    VID:0x%02X 0x%02x 0x%02x 0x%02x", fw_info->fw_vid[0], fw_info->fw_vid[1], fw_info->fw_vid[2], fw_info->fw_vid[3]);
 		res = memcmp(fw_ver.vid, fw_info->fw_vid, dev->reg.vid_len);
 		if (res == 0) {
 			ts_err("FW version is equal to the IC's");
@@ -369,7 +369,7 @@ static inline int goodix_reg_read(struct goodix_ts_device *dev,
 	return dev->hw_ops->read_trans(dev, addr, data, len);
 }
 /**
- * goodix_load_isp - load ISP program to deivce ram
+ * goodix_load_isp - load ISP program to device ram
  * @dev: pointer to touch device
  * @fw_data: firmware data
  * return 0 ok, <0 error
@@ -569,6 +569,7 @@ static int goodix_format_fw_packet(u8 *pkt, u32 flash_addr,
 				   u16 len, const u8 *data)
 {
 	u16 checksum;
+
 	if (!pkt || !data)
 		return -EINVAL;
 
@@ -678,7 +679,7 @@ static int goodix_send_fw_packet(struct goodix_ts_device *dev, u8 type,
  * packets, the max size of packet is limited to
  * @{ISP_MAX_BUFFERSIZE}
  * @dev: pointer to touch device
- * @subsys: subsystem infomation
+ * @subsys: subsystem information
  * return: 0 ok, < 0 error
  */
 static int goodix_flash_subsystem(struct goodix_ts_device *dev,
@@ -951,9 +952,9 @@ static int goodix_fw_update_thread(void *data)
 	static DEFINE_MUTEX(fwu_lock);
 	int r;
 
-	ts_err("%s:start\n",__func__);
+	ts_err("%s:start\n", __func__);
 	if (!fwu_ctrl) {
-		ts_err("Invaid thread params");
+		ts_err("Invalid thread params");
 		goodix_unregister_ext_module(&goodix_fwu_module);
 		return 0;
 	}
@@ -1037,6 +1038,7 @@ static ssize_t goodix_sysfs_update_en_store(
 		const char *buf, size_t count)
 {
 	int val = 0, r;
+
 	r = sscanf(buf, "%d", &val);
 	if (r < 0)
 		return r;
@@ -1053,6 +1055,7 @@ static ssize_t goodix_sysfs_update_progress_show(
 		char *buf)
 {
 	struct fw_update_ctrl *fw_ctrl = module->priv_data;
+
 	return scnprintf(buf, PAGE_SIZE, "%d\n", fw_ctrl->progress);
 }
 
@@ -1197,12 +1200,12 @@ static ssize_t goodix_sysfs_force_update_store(
 }
 
 static struct goodix_ext_attribute goodix_fwu_attrs[] = {
-	__EXTMOD_ATTR(update_en, S_IWUGO, NULL, goodix_sysfs_update_en_store),
-	__EXTMOD_ATTR(progress, S_IRUGO, goodix_sysfs_update_progress_show, NULL),
-	__EXTMOD_ATTR(result, S_IRUGO, goodix_sysfs_update_result_show, NULL),
-	__EXTMOD_ATTR(fwversion, S_IRUGO, goodix_sysfs_update_fwversion_show, NULL),
-	__EXTMOD_ATTR(fwsize, S_IRUGO | S_IWUGO, goodix_sysfs_fwsize_show, goodix_sysfs_fwsize_store),
-	__EXTMOD_ATTR(force_update, S_IWUGO, NULL, goodix_sysfs_force_update_store),
+	__EXTMOD_ATTR(update_en, 0222, NULL, goodix_sysfs_update_en_store),
+	__EXTMOD_ATTR(progress, 0444, goodix_sysfs_update_progress_show, NULL),
+	__EXTMOD_ATTR(result, 0444, goodix_sysfs_update_result_show, NULL),
+	__EXTMOD_ATTR(fwversion, 0444, goodix_sysfs_update_fwversion_show, NULL),
+	__EXTMOD_ATTR(fwsize, 0666, goodix_sysfs_fwsize_show, goodix_sysfs_fwsize_store),
+	__EXTMOD_ATTR(force_update, 0222, NULL, goodix_sysfs_force_update_store),
 };
 
 static int goodix_syfs_init(struct goodix_ts_core *core_data,
@@ -1230,7 +1233,7 @@ static int goodix_syfs_init(struct goodix_ts_core *core_data,
 	}
 
 	fw_ctrl->attr_fwimage.attr.name = "fwimage";
-	fw_ctrl->attr_fwimage.attr.mode = S_IRUGO | S_IWUGO;
+	fw_ctrl->attr_fwimage.attr.mode = 0666;
 	fw_ctrl->attr_fwimage.size = 0;
 	fw_ctrl->attr_fwimage.write = goodix_sysfs_fwimage_store;
 	ret = sysfs_create_bin_file(&module->kobj, &fw_ctrl->attr_fwimage);
@@ -1266,10 +1269,10 @@ static int goodix_fw_update_init(struct goodix_ts_core *core_data,
 	fwu_ctrl->core_data = core_data;
 
 	/* find a valid firmware image name */
-	if (ts_bdata && ts_bdata->fw_name){
+	if (ts_bdata && ts_bdata->fw_name) {
 		strlcpy(fwu_ctrl->fw_name, ts_bdata->fw_name, sizeof(fwu_ctrl->fw_name));
-		ts_info("find goodix firmware:%s\n",ts_bdata->fw_name);
-	}else{
+		ts_info("find goodix firmware:%s\n", ts_bdata->fw_name);
+	} else{
 		strlcpy(fwu_ctrl->fw_name, TS_DEFAULT_FIRMWARE, sizeof(fwu_ctrl->fw_name));
 		ts_info("can't find goodix firmware,use default name\n");
 	}
@@ -1309,6 +1312,7 @@ static int goodix_fw_before_resume(struct goodix_ts_core *core_data,
 		struct goodix_ext_module *module)
 {
 	struct fw_update_ctrl *fwu_ctrl = module->priv_data;
+
 	return fwu_ctrl->allow_resume ?
 		EVT_HANDLED : EVT_CANCEL_RESUME;
 }
@@ -1323,6 +1327,7 @@ static int goodix_fw_irq_event(struct goodix_ts_core *core_data,
 		struct goodix_ext_module *module)
 {
 	struct fw_update_ctrl *fwu_ctrl = module->priv_data;
+
 	return fwu_ctrl->allow_irq ?
 		EVT_HANDLED : EVT_CANCEL_IRQEVT;
 }
@@ -1331,6 +1336,7 @@ static int goodix_fw_before_reset(struct goodix_ts_core *core_data,
 		struct goodix_ext_module *module)
 {
 	struct fw_update_ctrl *fwu_ctrl = module->priv_data;
+
 	return fwu_ctrl->allow_reset ?
 		EVT_HANDLED : EVT_CANCEL_RESET;
 }

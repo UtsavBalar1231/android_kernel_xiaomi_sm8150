@@ -10,7 +10,7 @@ int goodix_start_cfg_bin(struct goodix_ts_core *ts_core)
 {
 	struct task_struct *cfg_bin_thrd;
 	/* create and run update thread */
-	ts_err("enter::%s\n",__func__);
+	ts_err("enter::%s\n", __func__);
 	cfg_bin_thrd = kthread_run(goodix_cfg_bin_proc, ts_core, "goodix-parse_cfg_bin");
 	if (IS_ERR_OR_NULL(cfg_bin_thrd)) {
 		ts_err("Failed to create update thread:%ld", PTR_ERR(cfg_bin_thrd));
@@ -43,6 +43,7 @@ int goodix_parse_cfg_bin(struct goodix_cfg_bin *cfg_bin)
 	u8 checksum;
 	int i, r;
 	u16 offset1, offset2;
+
 	if (!cfg_bin->bin_data || cfg_bin->bin_data_len == 0) {
 		ts_err("NO cfg_bin data, cfg_bin data length:%d", cfg_bin->bin_data_len);
 		r = -EINVAL;
@@ -166,6 +167,7 @@ int goodix_cfg_bin_proc(void *data)
 	int r;
 
 	struct goodix_cfg_bin *cfg_bin = kzalloc(sizeof(struct goodix_cfg_bin), GFP_KERNEL);
+
 	if (!cfg_bin) {
 		ts_err("Failed to alloc memory for cfg_bin");
 		r = -ENOMEM;
@@ -289,6 +291,7 @@ int goodix_get_reg_and_cfg(struct goodix_ts_device *ts_dev, struct goodix_cfg_bi
 	u8 temp_fw_mask[TS_CFG_BLOCK_FW_MASK_LEN] = {0x00};
 	u8 temp_pid[TS_CFG_BLOCK_PID_LEN] = {0x00};
 	int r = -EINVAL;
+
 	normal_pkg = NULL;
 	high_sense_pkg = NULL;
 
@@ -308,7 +311,7 @@ int goodix_get_reg_and_cfg(struct goodix_ts_device *ts_dev, struct goodix_cfg_bi
 					sizeof(cfg_bin->cfg_pkgs[i].cnst_info.ic_type)))
 			ts_dev->ic_type = IC_TYPE_NORMANDY;
 		else
-			ts_err("get ic type FAILED, unknow ic type from cfg_bin:%s",
+			ts_err("get ic type FAILED, unknown ic type from cfg_bin:%s",
 					cfg_bin->cfg_pkgs[i].cnst_info.ic_type);
 
 		ts_info("ic_type:%d", ts_dev->ic_type);
@@ -402,7 +405,7 @@ int goodix_get_reg_and_cfg(struct goodix_ts_device *ts_dev, struct goodix_cfg_bi
 					sizeof(normal_pkg->cnst_info.ic_type)))
 			ts_dev->ic_type = IC_TYPE_NORMANDY;
 		else
-			ts_err("get ic type FAILED, unknow ic type from cfg_bin:%s",
+			ts_err("get ic type FAILED, unknown ic type from cfg_bin:%s",
 					normal_pkg->cnst_info.ic_type);
 
 		/*get register info*/

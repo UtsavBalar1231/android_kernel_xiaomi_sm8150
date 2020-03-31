@@ -154,7 +154,7 @@ static int goodix_parse_dt(struct device_node *node,
 	struct property *prop;
 	int r;
 
-	ts_err("enter::%s\n",__func__);
+	ts_err("enter::%s\n", __func__);
 	if (!board_data) {
 		ts_err("Invalid board data");
 		return -EINVAL;
@@ -558,10 +558,10 @@ int goodix_set_i2c_doze_mode(struct goodix_ts_device *dev, int enable)
 			usleep_range(1000, 1100);
 			for (i = 0; i < TS_DOZE_DISABLE_RETRY_TIMES; i++) {
 				goodix_i2c_read_trans(dev, TS_REG_DOZE_STAT, &r_data, 1);
-				if (TS_DOZE_CLOSE_OK_DATA == r_data) {
+				if (r_data == TS_DOZE_CLOSE_OK_DATA) {
 					result = 0;
 					goto exit;
-				} else if (0xAA != r_data) {
+				} else if (r_data != 0xAA) {
 					w_data = TS_DOZE_DISABLE_DATA;
 					goodix_i2c_write_trans(dev, TS_REG_DOZE_CTRL, &w_data, 1);
 				}
@@ -1015,6 +1015,7 @@ static int goodix_check_cfg_valid(struct goodix_ts_device *dev, u8 *cfg, u32 len
 	int i, j;
 	int bag_start = 0;
 	int bag_end = 0;
+
 	if (!cfg || length < TS_CFG_HEAD_LEN) {
 		ts_err("cfg is INVALID, len:%d", length);
 		ret = -EINVAL;
@@ -1450,7 +1451,7 @@ static int goodix_hw_init(struct goodix_ts_device *ts_dev)
 			ts_dev->chip_version.sensor_id);
 	if (r < 0)
 		ts_info("Cann't find customized parameters");
-	
+
 	ts_dev->normal_cfg->delay = 500;
 	/* send normal-cfg to firmware */
 	r = goodix_send_config(ts_dev, ts_dev->normal_cfg);
@@ -1507,7 +1508,7 @@ int goodix_hw_reset(struct goodix_ts_device *dev)
 		r = goodix_i2c_write(dev,
 					0x8043, data, 1);
 		if (r < 0)
-			ts_err("nanjing reset, init static esd FAILED, i2c wirte ERROR");
+			ts_err("nanjing reset, init static esd FAILED, i2c write ERROR");
 	}
 
 	/*init dynamic esd*/
@@ -1536,7 +1537,7 @@ static int goodix_request_handler(struct goodix_ts_device *dev,
 	unsigned char buffer[1];
 	int r;
 
-	if (dev->reg.fw_request != 0x6F6D){
+	if (dev->reg.fw_request != 0x6F6D) {
 		ts_info("firmware reg is wrong!\n");
 		dev->reg.fw_request = 0x6F6D;
 	}
@@ -1582,6 +1583,7 @@ static void goodix_swap_coords(struct goodix_ts_device *dev,
 {
 	int i, temp;
 	struct goodix_ts_board_data *bdata = dev->board_data;
+
 	for (i = 0; i < touch_num; i++) {
 		if (bdata->swap_axis) {
 			temp = coords->x;
@@ -1692,7 +1694,7 @@ static int goodix_remap_trace_id(struct goodix_ts_device *dev,
 			}
 			offset += BYTES_PER_COORD;
 		}
-	
+
 	}
 
 	/*for (i = 0; i < touch_num; i++) {
@@ -1934,7 +1936,7 @@ static int goodix_event_handler(struct goodix_ts_device *dev,
 		/* handle hotknot event */
 		ts_info("Hotknot event");
 	} else {
-		ts_info("unknow event type:%02x", event_sta);
+		ts_info("unknown event type:%02x", event_sta);
 		r = -EINVAL;
 	}
 
@@ -1943,7 +1945,7 @@ static int goodix_event_handler(struct goodix_ts_device *dev,
 
 
 /**
- * goodix_hw_suspend - Let touch deivce stay in lowpower mode.
+ * goodix_hw_suspend - Let touch device stay in lowpower mode.
  * @dev: pointer to goodix touch device
  * @return: 0 - succeed, < 0 - failed
  */
@@ -1964,7 +1966,7 @@ static int goodix_hw_suspend(struct goodix_ts_device *dev)
 }
 
 /**
- * goodix_hw_resume - Let touch deivce stay in active  mode.
+ * goodix_hw_resume - Let touch device stay in active  mode.
  * @dev: pointer to goodix touch device
  * @return: 0 - succeed, < 0 - failed
  */
@@ -2093,9 +2095,9 @@ static int goodix_i2c_probe(struct i2c_client *client,
 	struct goodix_ts_board_data *ts_bdata = NULL;
 	int r = 0;
 
-	ts_err("enter::%s\n",__func__);
+	ts_err("enter::%s\n", __func__);
 
-	r = i2c_check_functionality(client->adapter,I2C_FUNC_I2C);
+	r = i2c_check_functionality(client->adapter, I2C_FUNC_I2C);
 	if (!r)
 		return -EIO;
 
@@ -2112,11 +2114,11 @@ static int goodix_i2c_probe(struct i2c_client *client,
 			return r;
 	}
 #ifdef CONFIG_ACPI
-	 else if (ACPI_COMPANION(&client->dev)) {
+	else if (ACPI_COMPANION(&client->dev)) {
 		r = goodix_parse_acpi(&client->dev, ts_bdata);
 		if (r < 0)
 			return r;
-	 }
+	}
 #endif
 	else {
 		/* use platform data */
@@ -2137,7 +2139,7 @@ static int goodix_i2c_probe(struct i2c_client *client,
 	ts_device->dev = &client->dev;
 	ts_device->board_data = ts_bdata;
 	ts_device->hw_ops = &hw_i2c_ops;
-	
+
 
 	/* ts core device */
 	goodix_pdev = kzalloc(sizeof(struct platform_device), GFP_KERNEL);
@@ -2149,14 +2151,14 @@ static int goodix_i2c_probe(struct i2c_client *client,
 	goodix_pdev->num_resources = 0;
 	/*
 	 * you could find this platform dev in
-	 * /sys/devices/platfrom/goodix_ts.0
+	 * /sys/devices/platform/goodix_ts.0
 	 * goodix_pdev->dev.parent = &client->dev;
 	 */
 	goodix_pdev->dev.platform_data = ts_device;
 	goodix_pdev->dev.release = goodix_pdev_release;
 
 	/* register platform device, then the goodix_ts_core
-	 * module will probe the touch deivce. */
+	 * module will probe the touch device. */
 	r = platform_device_register(goodix_pdev);
 
 	ts_info("goodix9886_i2c_probe OUT");

@@ -174,7 +174,7 @@ struct goodix_ts_board_data {
 
 /*
  * struct goodix_ts_config - chip config data
- * @initialized: whether intialized
+ * @initialized: whether initialized
  * @name: name of this config
  * @lock: mutex
  * @reg_base: register base of config data
@@ -284,7 +284,7 @@ struct goodix_ts_event {
 
 /*
  * struct goodix_ts_version - firmware version
- * @valid: whether these infomation is valid
+ * @valid: whether these information is valid
  * @pid: product id string
  * @vid: firmware version code
  * @cid: customer id code
@@ -328,7 +328,7 @@ struct goodix_ts_regs {
  * @normal_cfg: normal config data
  * @highsense_cfg: high sense config data
  * @hw_ops: hardware operations
- * @chip_version: firmware version infomation
+ * @chip_version: firmware version information
  * @sleep_cmd: sleep commang
  * @gesture_cmd: gesture command
  * @dev: device pointer,may be a i2c or spi device
@@ -614,7 +614,7 @@ static inline const struct goodix_ts_hw_ops *ts_hw_ops(
 /*
  * checksum helper functions
  * checksum can be u8/le16/be16/le32/be32 format
- * NOTE: the caller shoule be responsible for the
+ * NOTE: the caller should be responsible for the
  * legality of @data and @size parameters, so be
  * careful when call these functions.
  */
@@ -622,6 +622,7 @@ static inline u8 checksum_u8(u8 *data, u32 size)
 {
 	u8 checksum = 0;
 	u32 i;
+
 	for (i = 0; i < size; i++)
 		checksum += data[i];
 	return checksum;
@@ -641,6 +642,7 @@ static inline u16 checksum_be16(u8 *data, u32 size)
 {
 	u16 checksum = 0;
 	u32 i;
+
 	for (i = 0; i < size; i += 2)
 		checksum += be16_to_cpup((__be16 *)(data + i));
 	return checksum;
@@ -650,6 +652,7 @@ static inline u32 checksum_le32(u8 *data, u32 size)
 {
 	u32 checksum = 0;
 	u32 i;
+
 	for (i = 0; i < size; i += 4)
 		checksum += le32_to_cpup((__le32 *)(data + i));
 	return checksum;
@@ -659,6 +662,7 @@ static inline u32 checksum_be32(u8 *data, u32 size)
 {
 	u32 checksum = 0;
 	u32 i;
+
 	for (i = 0; i < size; i += 4)
 		checksum += be32_to_cpup((__be32 *)(data + i));
 	return checksum;

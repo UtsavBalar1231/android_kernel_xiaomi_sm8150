@@ -186,6 +186,7 @@ int goodix_unregister_ext_module(struct goodix_ext_module *module)
 {
 	struct goodix_ext_module *ext_module;
 	bool found = false;
+
 	if (!module)
 		return -EINVAL;
 	if (!goodix_modules.initilized)
@@ -305,6 +306,7 @@ EXPORT_SYMBOL_GPL(goodix_msg_printf);
 static int goodix_debugfs_init(void)
 {
 	struct dentry *r_b;
+
 	goodix_dbg.buf.size = PAGE_SIZE;
 	goodix_dbg.pos = 0;
 	goodix_dbg.buf.data = kzalloc(goodix_dbg.buf.size, GFP_KERNEL);
@@ -330,7 +332,7 @@ static void goodix_debugfs_exit(void)
 	pr_info("Debugfs module exit\n");
 }
 
-/* show external module infomation */
+/* show external module information */
 static ssize_t goodix_ts_extmod_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -356,7 +358,7 @@ static ssize_t goodix_ts_extmod_show(struct device *dev,
 	return offset;
 }
 
-/* show driver infomation */
+/* show driver information */
 static ssize_t goodix_ts_driver_info_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -523,7 +525,7 @@ static ssize_t goodix_ts_send_cfg_store(struct device *dev,
 	const struct firmware *cfg_img;
 	struct goodix_ts_config *config = NULL;
 
-	ts_err("%s::enter\n",__func__);
+	ts_err("%s::enter\n", __func__);
 	if (sscanf(buf, "%d", &en) != 1)
 		return -EINVAL;
 
@@ -574,7 +576,7 @@ exit:
 	return count;
 }
 
-/* show irq infomation */
+/* show irq information */
 static ssize_t goodix_ts_irq_info_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -631,14 +633,14 @@ static ssize_t goodix_ts_irq_info_store(struct device *dev,
 	return count;
 }
 
-static DEVICE_ATTR(extmod_info, S_IRUGO, goodix_ts_extmod_show, NULL);
-static DEVICE_ATTR(driver_info, S_IRUGO, goodix_ts_driver_info_show, NULL);
-static DEVICE_ATTR(chip_info, S_IRUGO, goodix_ts_chip_info_show, NULL);
-static DEVICE_ATTR(config_data, S_IRUGO, goodix_ts_config_data_show, NULL);
-static DEVICE_ATTR(reset, S_IWUSR | S_IWGRP, NULL, goodix_ts_reset_store);
-static DEVICE_ATTR(send_cfg, S_IWUSR | S_IWGRP, NULL, goodix_ts_send_cfg_store);
-static DEVICE_ATTR(read_cfg, S_IRUGO, goodix_ts_read_cfg_show, NULL);
-static DEVICE_ATTR(irq_info, S_IRUGO | S_IWUSR | S_IWGRP,
+static DEVICE_ATTR(extmod_info, 0444, goodix_ts_extmod_show, NULL);
+static DEVICE_ATTR(driver_info, 0444, goodix_ts_driver_info_show, NULL);
+static DEVICE_ATTR(chip_info, 0444, goodix_ts_chip_info_show, NULL);
+static DEVICE_ATTR(config_data, 0444, goodix_ts_config_data_show, NULL);
+static DEVICE_ATTR(reset, 0220, NULL, goodix_ts_reset_store);
+static DEVICE_ATTR(send_cfg, 0220, NULL, goodix_ts_send_cfg_store);
+static DEVICE_ATTR(read_cfg, 0444, goodix_ts_read_cfg_show, NULL);
+static DEVICE_ATTR(irq_info, 0664,
 		goodix_ts_irq_info_show, goodix_ts_irq_info_store);
 
 static struct attribute *sysfs_attrs[] = {
@@ -706,6 +708,7 @@ static void release_all_touches(struct goodix_ts_core *core_data)
 	unsigned int type = MT_TOOL_FINGER;
 	struct goodix_ts_device *ts_dev = core_data->ts_dev;
 	int i;
+
 	mutex_lock(&ts_dev->report_mutex);
 
 	for (i = 0; i < GOODIX_MAX_TOUCH; i++) {
@@ -736,9 +739,9 @@ static int goodix_ts_input_report(struct input_dev *dev,
 	unsigned int touch_num = touch_data->touch_num;
 	int i, id;
 
-	if (core_data->fod_status){
-		if ((core_data->event_status & 0x20) == 0x20){
-			ts_info("%s:the data sended was error,return\n",__func__);
+	if (core_data->fod_status) {
+		if ((core_data->event_status & 0x20) == 0x20) {
+			ts_info("%s:the data sended was error,return\n", __func__);
 			return 0;
 		}
 	}
@@ -897,7 +900,7 @@ static irqreturn_t goodix_ts_threadirq_func(int irq, void *data)
 		r = ext_module->funcs->irq_event(core_data, ext_module);
 		/*ts_err("enter %s r=%d\n", __func__, r);*/
 		if (r == EVT_CANCEL_IRQEVT) {
-			ts_err("enter %s EVT_CANCEL_IRQEVT \n", __func__);
+			ts_err("enter %s EVT_CANCEL_IRQEVT\n", __func__);
 			mutex_unlock(&goodix_modules.mutex);
 			return IRQ_HANDLED;
 		}
@@ -979,10 +982,11 @@ EXPORT_SYMBOL(goodix_ts_irq_enable);
 static int goodix_ts_power_init(struct goodix_ts_core *core_data)
 {
 	struct goodix_ts_board_data *ts_bdata;
-        ts_bdata = board_data(core_data);
 
-        gpio_direction_output(ts_bdata->reset_gpio, 0);
-        gpio_direction_output(ts_bdata->irq_gpio, 1);
+	ts_bdata = board_data(core_data);
+
+	gpio_direction_output(ts_bdata->reset_gpio, 0);
+	gpio_direction_output(ts_bdata->irq_gpio, 1);
 
 	return 0;
 }
@@ -997,7 +1001,7 @@ int goodix_ts_power_on(struct goodix_ts_core *core_data)
 	struct goodix_ts_board_data *ts_bdata = board_data(core_data);
 	int r = 0;
 
-	ts_err("enter::%s\n",__func__);
+	ts_err("enter::%s\n", __func__);
 	if (core_data->power_on)
 		return 0;
 	gpio_direction_output(ts_bdata->vdd_gpio, 1);
@@ -1171,13 +1175,13 @@ static ssize_t gtp_fod_status_store(struct device *dev,
 
 	return count;
 }
-static DEVICE_ATTR(fod_status, (S_IRUGO | S_IWUSR | S_IWGRP),
+static DEVICE_ATTR(fod_status, (0664),
 			gtp_fod_status_show, gtp_fod_status_store);
 
-static DEVICE_ATTR(fod_test, (S_IRUGO | S_IWUSR | S_IWGRP),
+static DEVICE_ATTR(fod_test, (0664),
 		NULL, gtp_fod_test_store);
 
-static DEVICE_ATTR(touch_suspend_notify, (S_IRUGO | S_IRGRP),
+static DEVICE_ATTR(touch_suspend_notify, (0444),
 			gtp_touch_suspend_notify_show, NULL);
 
 static int goodix_input_event(struct input_dev *dev, unsigned int type,
@@ -1312,7 +1316,7 @@ int goodix_ts_input_dev_config(struct goodix_ts_core *core_data)
 }
 
 /**
- * goodix_ts_hw_init - Hardware initilize
+ * goodix_ts_hw_init - Hardware initialize
  *  poweron - hardware reset - sendconfig
  * @core_data: pointer to touch core data
  * return: 0 intilize ok, <0 failed
@@ -1337,7 +1341,7 @@ int goodix_ts_hw_init(struct goodix_ts_core *core_data)
 	}
 
 exit:
-	/* if bus communication error occured then
+	/* if bus communication error occurred then
 	 * exit driver binding, other errors will
 	 * be ignored */
 	if (r != -EBUS)
@@ -1375,7 +1379,7 @@ static void goodix_ts_esd_work(struct work_struct *work)
 		if (core->ts_dev->ic_type == IC_TYPE_NANJING) {
 			r = hw_ops->write(core->ts_dev, 0x8043, &data, 1);
 			if (r < 0)
-				ts_err("nanjing esd reset, init static esd FAILED, i2c wirte ERROR");
+				ts_err("nanjing esd reset, init static esd FAILED, i2c write ERROR");
 		}
 
 		/*init dynamic esd*/
@@ -1399,7 +1403,7 @@ static void goodix_ts_esd_on(struct goodix_ts_core *core)
 {
 	struct goodix_ts_esd *ts_esd = &core->ts_esd;
 
-	if(core->ts_dev->reg.esd == 0)
+	if (core->ts_dev->reg.esd == 0)
 		return;
 
 	atomic_set(&ts_esd->esd_on, 1);
@@ -1528,7 +1532,7 @@ int goodix_ts_suspend(struct goodix_ts_core *core_data)
 				mutex_unlock(&goodix_modules.mutex);
 				ts_info("suspend_stat[%d]", atomic_read(&core_data->suspend_stat));
 				ts_info("Canceled by module:%s", ext_module->name);
-				if(!atomic_read(&core_data->suspend_stat))
+				if (!atomic_read(&core_data->suspend_stat))
 					ts_info("go suspend remaind work\n");
 				else
 					goto out;
@@ -1659,7 +1663,7 @@ out:
 	 */
 	goodix_ts_blocking_notify(NOTIFY_RESUME, NULL);
 
-	ts_err("core_data->fod_pressed = %d\n",core_data->fod_pressed);
+	ts_err("core_data->fod_pressed = %d\n", core_data->fod_pressed);
 
 	if (!core_data->fod_pressed) {
 		ts_err("resume release all touch");
@@ -1680,6 +1684,7 @@ static int goodix_bl_state_chg_callback(struct notifier_block *nb, unsigned long
 {
 	struct goodix_ts_core *core_data = container_of(nb, struct goodix_ts_core, bl_notifier);
 	unsigned int blank;
+
 	if (val != BACKLIGHT_UPDATED)
 		return NOTIFY_OK;
 	if (data && core_data) {
@@ -1712,7 +1717,7 @@ int goodix_ts_msm_drm_notifier_callback(struct notifier_block *self,
 		flush_workqueue(core_data->event_wq);
 		if (event == MSM_DRM_EVENT_BLANK && (blank == MSM_DRM_BLANK_POWERDOWN ||
 			blank == MSM_DRM_BLANK_LP1 || blank == MSM_DRM_BLANK_LP2)) {
-			ts_info("touchpanel suspend .....blank=%d\n",blank);
+			ts_info("touchpanel suspend .....blank=%d\n", blank);
 			ts_info("touchpanel suspend .....suspend_stat=%d\n", atomic_read(&core_data->suspend_stat));
 			if (atomic_read(&core_data->suspend_stat))
 				return 0;
@@ -1720,7 +1725,7 @@ int goodix_ts_msm_drm_notifier_callback(struct notifier_block *self,
 			queue_work(core_data->event_wq, &core_data->suspend_work);
 		} else if (event == MSM_DRM_EVENT_BLANK && blank == MSM_DRM_BLANK_UNBLANK) {
 			//if (!atomic_read(&core_data->suspend_stat))
-			ts_info("core_data->suspend_stat = %d\n",atomic_read(&core_data->suspend_stat));
+			ts_info("core_data->suspend_stat = %d\n", atomic_read(&core_data->suspend_stat));
 			ts_info("touchpanel resume");
 			queue_work(core_data->event_wq, &core_data->resume_work);
 		}
@@ -1776,6 +1781,7 @@ static void goodix_ts_suspend_work(struct work_struct *work)
 static int goodix_ts_pm_suspend(struct device *dev)
 {
 	struct goodix_ts_core *core_data = dev_get_drvdata(dev);
+
 	if (device_may_wakeup(dev) && core_data->gesture_enabled) {
 		enable_irq_wake(core_data->irq);
 	}
@@ -2006,10 +2012,10 @@ static ssize_t goodix_lockdown_info_show(struct device *dev,
 			goodix_core_data->lockdown_info[6], goodix_core_data->lockdown_info[7]);
 }
 
-static DEVICE_ATTR(lockdown_info, (S_IRUGO), goodix_lockdown_info_show, NULL);
-static DEVICE_ATTR(panel_vendor, (S_IRUGO), goodix_panel_vendor_show, NULL);
-static DEVICE_ATTR(panel_color, (S_IRUGO), goodix_panel_color_show, NULL);
-static DEVICE_ATTR(panel_display, (S_IRUGO), goodix_panel_display_show, NULL);
+static DEVICE_ATTR(lockdown_info, (0444), goodix_lockdown_info_show, NULL);
+static DEVICE_ATTR(panel_vendor, (0444), goodix_panel_vendor_show, NULL);
+static DEVICE_ATTR(panel_color, (0444), goodix_panel_color_show, NULL);
+static DEVICE_ATTR(panel_display, (0444), goodix_panel_display_show, NULL);
 
 static struct attribute *goodix_attr_group[] = {
 	&dev_attr_panel_vendor.attr,
@@ -2069,7 +2075,7 @@ static int goodix_ts_probe(struct platform_device *pdev)
 	int r;
 	u8 read_val = 0;
 
-	ts_err("enter::%s\n",__func__);
+	ts_err("enter::%s\n", __func__);
 	ts_device = pdev->dev.platform_data;
 	if (!ts_device || !ts_device->hw_ops ||
 			!ts_device->board_data) {
@@ -2095,13 +2101,13 @@ static int goodix_ts_probe(struct platform_device *pdev)
 
 	r = goodix_ts_power_init(core_data);
 	if (r < 0) {
-		pr_err("goodix_ts_power_init fail \n");
+		pr_err("goodix_ts_power_init fail\n");
 		goto out;
 	}
 
 	r = goodix_ts_power_on(core_data);
 	if (r < 0) {
-		pr_err("goodix_ts_power_on fail \n");
+		pr_err("goodix_ts_power_on fail\n");
 		goto out;
 	}
 
@@ -2118,7 +2124,7 @@ static int goodix_ts_probe(struct platform_device *pdev)
 	/* get GPIO resource */
 	r = goodix_ts_gpio_setup(core_data);
 	if (r < 0) {
-		pr_err("goodix_ts_gpio_setup fail \n");
+		pr_err("goodix_ts_gpio_setup fail\n");
 		goto out;
 	}
 	/*init lock to protect suspend_stat*/
@@ -2133,7 +2139,7 @@ static int goodix_ts_probe(struct platform_device *pdev)
 
 	r = ts_device->hw_ops->reset(ts_device);
 	if (r < 0) {
-		pr_err("goodix_hw_ops->reset fail \n");
+		pr_err("goodix_hw_ops->reset fail\n");
 		goto out;
 	}
 

@@ -263,7 +263,7 @@ int goodix_check_gesture_stat(bool enable)
 	return 0;
 }
 /**
- * gsx_gesture_data_show - show gesture data read frome IC
+ * gsx_gesture_data_show - show gesture data read from IC
  *
  * @module: pointer to goodix_ext_module struct
  * @buf: pointer to output buffer
@@ -359,7 +359,7 @@ static int gsx_gesture_init(struct goodix_ts_core *core_data,
 		goto exit_gesture_init;
 	}
 
-	for (i = 0; i < sizeof(gesture_attrs)/sizeof(gesture_attrs[0]); i++) {
+	for (i = 0; i < ARRAY_SIZE(gesture_attrs); i++) {
 		if (sysfs_create_file(&module->kobj,
 				&gesture_attrs[i].attr)) {
 			ts_err("Create sysfs attr file error");
@@ -416,7 +416,7 @@ static int gsx_gesture_ist(struct goodix_ts_core *core_data,
 				temp_data, sizeof(temp_data));
 	/*ts_err("enter %s temp_data[0]=0x%x ret=%d\n", __func__, temp_data[0], ret);*/
 	if (ret < 0 || ((temp_data[0] & GOODIX_GESTURE_EVENT)  == 0)) {
-		ts_err("Read gesture data faild, ret=%d, temp_data[0]=0x%x", ret, temp_data[0]);
+		ts_err("Read gesture data failed, ret=%d, temp_data[0]=0x%x", ret, temp_data[0]);
 		goto re_send_ges_cmd;
 	}
 
@@ -577,7 +577,7 @@ static int goodix_set_suspend_func(struct goodix_ts_core *core_data)
 		ts_info("Set IC double wakeup mode off,FOD mode off;");
 	} else {
 		ret = -1;
-		ts_info("Get IC mode falied,core_data->double_wakeup=%d,core_data->fod_status=%d;",
+		ts_info("Get IC mode failed,core_data->double_wakeup=%d,core_data->fod_status=%d;",
 			core_data->double_wakeup, core_data->fod_status);
 	}
 
@@ -708,6 +708,7 @@ static int __init goodix_gsx_gesture_init(void)
 {
 	/* initialize core_data->ts_dev->gesture_cmd*/
 	int result;
+
 	ts_info("gesture module init");
 	gsx_gesture = kzalloc(sizeof(struct gesture_module), GFP_KERNEL);
 	if (!gsx_gesture)
