@@ -3881,7 +3881,7 @@ enum tfa_error tfa_dev_set_state(struct tfa_device *tfa, enum tfa_state state, i
 			if (ready)
 				break;
 		} while (loop--);
-		if (((!tfa->is_probus_device) && (is_calibration)) || ((tfa->rev & 0xff) == 0x13))
+		if ((!tfa->is_probus_device) && (is_calibration))
 		{
 			/* Enable FAIM when clock is stable, to avoid MTP corruption */
 			err = (enum tfa_error)tfa98xx_faim_protect(tfa, 1);
@@ -3915,7 +3915,7 @@ enum tfa_error tfa_dev_set_state(struct tfa_device *tfa, enum tfa_state state, i
 				count--;
 			}
 		}
-		if (((!tfa->is_probus_device) && (is_calibration)) || ((tfa->rev & 0xff) == 0x13))
+		if ((!tfa->is_probus_device) && (is_calibration))
 		{
 			err = (enum tfa_error)tfa98xx_faim_protect(tfa, 0);
 			if (tfa->verbose) {

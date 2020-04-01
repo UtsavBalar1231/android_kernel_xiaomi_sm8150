@@ -533,14 +533,8 @@ static ssize_t tfa98xx_dbgfs_start_set(struct file *file,
 
 	mutex_lock(&tfa98xx->dsp_lock);
 	ret = tfa_calibrate(tfa98xx->tfa);
-	if (ret == tfa_error_ok) {
-		cal_profile = tfaContGetCalProfile(tfa98xx->tfa);
-		if (cal_profile < 0) {
-			pr_warn("[0x%x] Calibration profile not found\n",
-				tfa98xx->i2c->addr);
-		}
-
-		ret = tfa98xx_tfa_start(tfa98xx, cal_profile, tfa98xx->vstep);
+	if (ret == tfa_error_ok)
+		ret = tfa98xx_tfa_start(tfa98xx, tfa98xx->profile, tfa98xx->vstep);
 	}
 	if (ret == tfa_error_ok)
 		tfa_dev_set_state(tfa98xx->tfa, TFA_STATE_UNMUTE, 0);
@@ -2062,7 +2056,6 @@ enum Tfa98xx_Error tfa98xx_read_data(struct tfa_device *tfa,
 	struct i2c_client *tfa98xx_client;
 	int err;
 	int tries = 0;
-	unsigned char *reg_buf = NULL;
 	struct i2c_msg msgs[] = {
 		{
 			.flags = 0,
@@ -2071,16 +2064,9 @@ enum Tfa98xx_Error tfa98xx_read_data(struct tfa_device *tfa,
 		}, {
 			.flags = I2C_M_RD,
 			.len = len,
-			.buf = value,
+			.buf = &reg,
 		},
 	};
-	reg_buf = (unsigned char *)kmalloc(sizeof(reg), GFP_DMA);     //GRP_KERNEL  also works,
-	if (!reg_buf) {
-		return -ENOMEM;;
-	}
-
-	*reg_buf = reg;
-	msgs[0].buf = reg_buf;
 
 	if (tfa == NULL) {
 		pr_err("No device available\n");
@@ -2117,7 +2103,6 @@ enum Tfa98xx_Error tfa98xx_read_data(struct tfa_device *tfa,
 		pr_err("No device available\n");
 		error = Tfa98xx_Error_Fail;
 	}
-	kfree(reg_buf);
 	return error;
 }
 
@@ -2374,7 +2359,7 @@ static void tfa98xx_container_loaded(const struct firmware *cont, void *context)
 
 		/* we should be power-down device when parameter is loaded. */
 		tfa_dev_stop(tfa98xx->tfa);
-		ret = tfa98xx->dsp_init = TFA98XX_DSP_INIT_STOPPED;
+		tfa98xx->dsp_init = TFA98XX_DSP_INIT_STOPPED;
 
 		mutex_unlock(&tfa98xx->dsp_lock);
 	}
@@ -2972,6 +2957,8 @@ static struct snd_soc_dai_driver tfa98xx_dai[] = {
 static int tfa98xx_probe(struct snd_soc_codec *codec)
 {
 	struct tfa98xx *tfa98xx = snd_soc_codec_get_drvdata(codec);
+	struct snd_soc_dapm_context *dapm = snd_soc_codec_get_dapm(codec);
+
 	int ret;
 
 	pr_debug("\n");
@@ -3000,6 +2987,17 @@ static int tfa98xx_probe(struct snd_soc_codec *codec)
 	}
 #endif
 	tfa98xx_add_widgets(tfa98xx);
+
+	snd_soc_dapm_ignore_suspend(dapm, "AIF IN");
+	snd_soc_dapm_ignore_suspend(dapm, "AIF OUT");
+	snd_soc_dapm_ignore_suspend(dapm, "OUTL");
+	snd_soc_dapm_ignore_suspend(dapm, "AEC Loopback");
+	snd_soc_dapm_ignore_suspend(dapm, "DMIC1");
+	snd_soc_dapm_ignore_suspend(dapm, "DMIC2");
+	snd_soc_dapm_ignore_suspend(dapm, "DMIC3");
+	snd_soc_dapm_ignore_suspend(dapm, "DMIC4");
+	snd_soc_dapm_ignore_suspend(dapm, "AIF Playback-1-34");
+	snd_soc_dapm_ignore_suspend(dapm, "AIF Capture-1-34");
 
 	dev_info(codec->dev, "tfa98xx codec registered (%s)",
 		tfa98xx->fw.name);
