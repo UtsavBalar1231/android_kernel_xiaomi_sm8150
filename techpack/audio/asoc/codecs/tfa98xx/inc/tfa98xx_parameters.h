@@ -37,7 +37,7 @@
 // matches the actual variable lenghts
 // This is to assure that the binary files can be transported between
 // different platforms.
-#pragma pack (push, 1)
+#pragma pack(push, 1)
 
 /*
  * typedef for 24 bit value using 3 bytes
@@ -99,15 +99,15 @@ typedef struct nxpTfaDspMem {
 */
 typedef struct {
 	int a2;
-	int a1;	
-	int b2;	
-	int b1;	
-	int b0;	
-}nxpTfaBiquad_t;
+	int a1;
+	int b2;
+	int b1;
+	int b0;
+} nxpTfaBiquad_t;
 
 typedef struct nxpTfaBiquadOld {
   uint8_t bytes[BIQUAD_COEFF_SIZE*sizeof(uint24_t)];
-}nxpTfaBiquadOld_t;
+} nxpTfaBiquadOld_t;
 
 typedef struct nxpTfaBiquadFloat {
   float headroom;
@@ -149,7 +149,7 @@ typedef struct nxpTfaFilter {
   float gain;
 } nxpTfaFilter_t ;  //8 * float + int32 + byte == 37
 
-/* 
+/*
  * biquad params for calculation
 */
 
@@ -205,24 +205,24 @@ typedef struct nxpTfaEqFilter {
 } nxpTfaEqFilter_t ;  //8 * float + int32 + byte == 37
 
 typedef struct nxpTfaContAntiAlias {
-	int8_t index; 	/**< index determines destination type; anti-alias, integrator,eq */
+	int8_t index;	/**< index determines destination type; anti-alias, integrator,eq */
 	uint8_t type;
 	float cutOffFreq;   // cut off frequency
 	float samplingFreq;
 	float rippleDb;     // integrator leakage
 	float rolloff;
 	uint8_t bytes[5*3];	// payload 5*24buts coeffs
-}nxpTfaContAntiAlias_t;
+} nxpTfaContAntiAlias_t;
 
 typedef struct nxpTfaContIntegrator {
-	int8_t index; 	/**< index determines destination type; anti-alias, integrator,eq */
+	int8_t index;	/**< index determines destination type; anti-alias, integrator,eq */
 	uint8_t type;
 	float cutOffFreq;   // cut off frequency
 	float samplingFreq;
 	float leakage;     // integrator leakage
 	float reserved;
 	uint8_t bytes[5*3];	// payload 5*24buts coeffs
-}nxpTfaContIntegrator_t;
+} nxpTfaContIntegrator_t;
 
 typedef struct nxpTfaContEq {
   int8_t index;
@@ -238,7 +238,7 @@ typedef union nxpTfaContBiquad {
 	nxpTfaContEq_t eq;
 	nxpTfaContAntiAlias_t aa;
 	nxpTfaContIntegrator_t in;
-}nxpTfaContBiquad_t;
+} nxpTfaContBiquad_t;
 
 #define TFA_BQ_EQ_INDEX			0
 #define TFA_BQ_ANTI_ALIAS_INDEX	10
@@ -252,18 +252,18 @@ typedef struct nxpTfaEqualizer {
 /*
  * files
  */
-#define HDR(c1,c2) (c2<<8|c1) // little endian
+#define HDR(c1, c2) (c2<<8|c1) // little endian
 typedef enum nxpTfaHeaderType {
-    paramsHdr		= HDR('P','M'), /* containter file */
-    volstepHdr	 	= HDR('V','P'),
-    patchHdr	 	= HDR('P','A'),
-    speakerHdr	 	= HDR('S','P'),
-    presetHdr	 	= HDR('P','R'),
-    configHdr	 	= HDR('C','O'),
-    equalizerHdr	= HDR('E','Q'),
-    drcHdr			= HDR('D','R'),
-    msgHdr			= HDR('M','G'),	/* generic message */
-    infoHdr			= HDR('I','N')
+    paramsHdr		= HDR('P', 'M'), /* containter file */
+    volstepHdr	 	= HDR('V', 'P'),
+    patchHdr	 	= HDR('P', 'A'),
+    speakerHdr	 	= HDR('S', 'P'),
+    presetHdr	 	= HDR('P', 'R'),
+    configHdr	 	= HDR('C', 'O'),
+    equalizerHdr	= HDR('E', 'Q'),
+    drcHdr			= HDR('D', 'R'),
+    msgHdr			= HDR('M', 'G'),	/* generic message */
+    infoHdr			= HDR('I', 'N')
 } nxpTfaHeaderType_t;
 
 /*
@@ -273,7 +273,7 @@ typedef enum nxpTfaHeaderType {
 #define NXPTFA_EQ_SUBVERSION "00"
 typedef struct nxpTfaEqualizerFile {
 	nxpTfaHeader_t hdr;
-	uint8_t samplerate; 				 // ==enum samplerates, assure 8 bits
+	uint8_t samplerate;				 // ==enum samplerates, assure 8 bits
     nxpTfaFilter_t filter[TFA98XX_MAX_EQ];// note: API index counts from 1..10
 } nxpTfaEqualizerFile_t;
 
@@ -401,29 +401,29 @@ typedef struct nxpTfaVolumeStep2 {
 #define NXPTFA_VP_SUBVERSION "00"
 typedef struct nxpTfaVolumeStepFile {
 	nxpTfaHeader_t hdr;
-	uint8_t vsteps;  	// can also be calulated from size+type
+	uint8_t vsteps;	// can also be calulated from size+type
 	uint8_t samplerate; // ==enum samplerates, assure 8 bits
-	uint8_t payload; 	//start of variable length contents:N times volsteps
-}nxpTfaVolumeStepFile_t;
+	uint8_t payload;	//start of variable length contents:N times volsteps
+} nxpTfaVolumeStepFile_t;
 /*
  * volumestep2 file
  */
 typedef struct nxpTfaVolumeStep2File {
 	nxpTfaHeader_t hdr;
-	uint8_t vsteps;  	// can also be calulated from size+type
+	uint8_t vsteps;	// can also be calulated from size+type
 	uint8_t samplerate; // ==enum samplerates, assure 8 bits
-	nxpTfaVolumeStep2_t vstep[]; 	//start of variable length contents:N times volsteps
-}nxpTfaVolumeStep2File_t;
+	nxpTfaVolumeStep2_t vstep[];	//start of variable length contents:N times volsteps
+} nxpTfaVolumeStep2File_t;
 
 /*
  * volumestepMax2 file
  */
 typedef struct nxpTfaVolumeStepMax2File {
 	nxpTfaHeader_t hdr;
-	uint8_t version[3]; 
+	uint8_t version[3];
 	uint8_t NrOfVsteps;
-	uint8_t vstepsBin[]; 
-}nxpTfaVolumeStepMax2File_t;
+	uint8_t vstepsBin[];
+} nxpTfaVolumeStepMax2File_t;
 
 /*
  * volumestepMax2 file
@@ -431,10 +431,10 @@ typedef struct nxpTfaVolumeStepMax2File {
  * This can only be used to find the messagetype of the vstep (without header)
  */
 typedef struct nxpTfaVolumeStepMax2_1File {
-	uint8_t version[3]; 
+	uint8_t version[3];
 	uint8_t NrOfVsteps;
-	uint8_t vstepsBin[]; 
-}nxpTfaVolumeStepMax2_1File_t;
+	uint8_t vstepsBin[];
+} nxpTfaVolumeStepMax2_1File_t;
 
 struct nxpTfaVolumeStepRegisterInfo {
 	uint8_t NrOfRegisters;
@@ -468,7 +468,7 @@ typedef struct nxpOldTfaFilter {
   double Q;
   double gain;
   uint8_t enabled;
-} nxpTfaOldFilter_t ;
+} nxpTfaOldFilter_t;
 
 typedef struct nxpTfaOldVolumeStep2 {
     float attenuation;              // IEEE single float
@@ -479,7 +479,7 @@ typedef struct nxpTfaOldVolumeStep2 {
 typedef struct nxpTfaOldVolumeStepFile {
 	nxpTfaOldHeader_t hdr;
 	nxpTfaOldVolumeStep2_t step[];
-}nxpTfaOldVolumeStep2File_t;
+} nxpTfaOldVolumeStep2File_t;
 /**************************end old v2 *************************************************/
 
 /*
@@ -599,7 +599,7 @@ typedef enum nxpTfaDescriptorType {
 typedef struct nxpTfaDescPtr {
 	uint32_t offset:24;
 	uint32_t  type:8; // (== enum nxpTfaDescriptorType, assure 8bits length)
-}nxpTfaDescPtr_t;
+} nxpTfaDescPtr_t;
 
 /*
  * generic file descriptor
@@ -713,12 +713,12 @@ typedef struct nxpTfaContainer {
     char customer[8];			// “name of customer”
     char application[8];		// “application name”
     char type[8];				// “application type name”
-    uint16_t ndev;	 			// "nr of device lists"
-    uint16_t nprof;	 			// "nr of profile lists"
+    uint16_t ndev;				// "nr of device lists"
+    uint16_t nprof;				// "nr of profile lists"
     uint16_t nliveData;			// "nr of livedata lists"
     nxpTfaDescPtr_t index[];	// start of item index table
 } nxpTfaContainer_t;
 
-#pragma pack (pop)
+#pragma pack(pop)
 
 #endif /* TFA98XXPARAMETERS_H_ */

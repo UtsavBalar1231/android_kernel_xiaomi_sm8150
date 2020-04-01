@@ -64,8 +64,8 @@ typedef struct TfaIrqName {
 /* MTP access uses registers
  *  defs are derived from corresponding bitfield names as used in the BF macros
  */
-#define MTPKEY2  	MTPK		/* unlock key2 MTPK */
-#define MTP0     	MTPOTC 	/* MTP data */
+#define MTPKEY2	MTPK		/* unlock key2 MTPK */
+#define MTP0	MTPOTC	/* MTP data */
 #define MTP_CONTROL CIMTP	/* copy i2c to mtp */
 
 /* interrupt enable register uses HW name in TFA2 */

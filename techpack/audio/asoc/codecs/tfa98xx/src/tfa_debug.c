@@ -22,9 +22,9 @@
 /* support for error code translation into text */
 static char latest_errorstr[64];
 
-const char* tfa98xx_get_error_string(enum Tfa98xx_Error error)
+const char *tfa98xx_get_error_string(enum Tfa98xx_Error error)
 {
-  const char* pErrStr;
+  const char *pErrStr;
 
   switch (error)
   {
@@ -97,15 +97,15 @@ const char* tfa98xx_get_error_string(enum Tfa98xx_Error error)
  * lookup bf in table
  *   return 'unkown' if not found
  */
-static char *tfa_bf2name(tfaBfName_t *table, uint16_t bf) {
-	int n=0;
+static char *tfa_bf2name(tfaBfName_t *table, uint16_t bf) 
+{
+	int n = 0;
 
 	do {
-		if ((table[n].bfEnum & 0xfff0 ) == (bf & 0xfff0 )) {
+		if ((table[n].bfEnum & 0xfff0) == (bf & 0xfff0 )) {
 			return table[n].bfName;
 		}
-	}
-	while( table[n++].bfEnum != 0xffff);
+	} while( table[n++].bfEnum != 0xffff);
 
 	return table[n-1].bfName; /* last name says unkown */
 }
@@ -113,11 +113,12 @@ static char *tfa_bf2name(tfaBfName_t *table, uint16_t bf) {
  * lookup name in table
  *   return 0xffff if not found
  */
-static uint16_t tfa_name2bf(tfaBfName_t *table,const  char *name) {
+static uint16_t tfa_name2bf(tfaBfName_t *table,const  char *name) 
+{
 	int n = 0;
 
 	do {
-		if (strcasecmp(name, table[n].bfName)==0)
+		if (strcasecmp(name, table[n].bfName) == 0)
 			return table[n].bfEnum;
 	} while (table[n++].bfEnum != 0xffff);
 
@@ -157,7 +158,7 @@ char *tfaContBitName(uint16_t num, unsigned short rev)
 	char *name;
 	 /* end of list for the unknown string */
 	int tableLength = sizeof(Tfa1DatasheetNames)/sizeof(tfaBfName_t);
-	const char *unknown=Tfa1DatasheetNames[tableLength-1].bfName;
+	const char *unknown = Tfa1DatasheetNames[tableLength-1].bfName;
 
 	switch (rev & 0xff) {
 	case 0x88:
@@ -182,12 +183,12 @@ char *tfaContBitName(uint16_t num, unsigned short rev)
 	case 0x80:
 	case 0x81:
 		name = tfa_bf2name(Tfa9890BitNames, num); /* my tabel 1st */
-		if (strcmp(unknown, name)==0)
+		if (strcmp(unknown, name) == 0)
 			name = tfa_bf2name(Tfa1BitNames, num); /* try generic table */
 		break;
 	case 0x12:
 		name = tfa_bf2name(Tfa9887BitNames, num); /* my tabel 1st */
-		if (strcmp(unknown, name)==0)
+		if (strcmp(unknown, name) == 0)
 			name = tfa_bf2name(Tfa1BitNames, num); /* try generic table */
 		break;
 	case 0x13:
@@ -210,7 +211,7 @@ char *tfaContDsName(uint16_t num, unsigned short rev)
 	char *name;
 	 /* end of list for the unknown string */
 	int tableLength = sizeof(Tfa1DatasheetNames)/sizeof(tfaBfName_t);
-	const char *unknown=Tfa1DatasheetNames[tableLength-1].bfName;
+	const char *unknown = Tfa1DatasheetNames[tableLength-1].bfName;
 
 	switch (rev & 0xff) {
 	case 0x88:
@@ -227,7 +228,7 @@ char *tfaContDsName(uint16_t num, unsigned short rev)
 		break;
 	case 0x74:
 		name =  tfa_bf2name(Tfa9874DatasheetNames, num);
-		break;        
+		break;
 	case 0x92:
 		name =  tfa_bf2name(Tfa9891DatasheetNames, num);
 		break;
@@ -235,12 +236,12 @@ char *tfaContDsName(uint16_t num, unsigned short rev)
 	case 0x80:
 	case 0x81:
 		name = tfa_bf2name(Tfa9890DatasheetNames, num); /* my tabel 1st */
-		if (strcmp(unknown, name)==0)
+		if (strcmp(unknown, name) == 0)
 			name = tfa_bf2name(Tfa1DatasheetNames, num); /* try generic table */
 		break;
 	case 0x12:
 		name = tfa_bf2name(Tfa9887DatasheetNames, num); /* my tabel 1st */
-		if (strcmp(unknown, name)==0)
+		if (strcmp(unknown, name) == 0)
 			name = tfa_bf2name(Tfa1DatasheetNames, num); /* try generic table */
 		break;
 	case 0x13:
@@ -263,11 +264,11 @@ char *tfaContBfName(uint16_t num, unsigned short rev)
 	char *name;
 	/* end of list for the unknown string */
 	int tableLength = sizeof(Tfa1DatasheetNames)/sizeof(tfaBfName_t);
-	const char *unknown=Tfa1DatasheetNames[tableLength-1].bfName;
+	const char *unknown = Tfa1DatasheetNames[tableLength-1].bfName;
 
 	/* if datasheet name does not exist look for bitfieldname */
 	name = tfaContDsName(num, rev);
-	if (strcmp(unknown, name)==0)
+	if (strcmp(unknown, name) == 0)
 		name = tfaContBitName(num, rev);
 
 	return name;
@@ -280,64 +281,64 @@ uint16_t tfaContBfEnum(const char *name, unsigned short rev)
 	switch (rev & 0xff) {
 	case 0x88:
 		bfnum =  tfa_name2bf(Tfa2DatasheetNames, name);
-		if (bfnum==0xffff)
+		if (bfnum == 0xffff)
 			bfnum = tfa_name2bf(Tfa2BitNames, name);/* try long bitname table */
 		break;
 	case 0x97:
 		bfnum =  tfa_name2bf(Tfa1DatasheetNames, name);
-		if (bfnum==0xffff)
+		if (bfnum == 0xffff)
 			bfnum = tfa_name2bf(Tfa1BitNames, name);/* try generic table */
 		break;
 	case 0x96:
 		bfnum =  tfa_name2bf(Tfa9896DatasheetNames, name);
-		if (bfnum==0xffff)
+		if (bfnum == 0xffff)
 			bfnum = tfa_name2bf(Tfa9896BitNames, name);/* try generic table */
 		break;
 	case 0x72:
 		bfnum =  tfa_name2bf(Tfa9872DatasheetNames, name);
-		if (bfnum==0xffff)
+		if (bfnum == 0xffff)
 			bfnum = tfa_name2bf(Tfa9872BitNames, name);/* try long bitname table */
 		break;
 	case 0x74:
 		bfnum =  tfa_name2bf(Tfa9874DatasheetNames, name);
-		if (bfnum==0xffff)
+		if (bfnum == 0xffff)
 			bfnum = tfa_name2bf(Tfa9874BitNames, name);/* try long bitname table */
-		break;        
+		break;
 	case 0x92:
 		bfnum =  tfa_name2bf(Tfa9891DatasheetNames, name);
-		if (bfnum==0xffff)
+		if (bfnum == 0xffff)
 			bfnum = tfa_name2bf(Tfa9891BitNames, name);/* try long bitname table */
 		break;
 	case 0x91:
 	case 0x80:
 	case 0x81:
 		bfnum = tfa_name2bf(Tfa9890DatasheetNames, name); /* my tabel 1st */
-		if (bfnum==0xffff)
+		if (bfnum == 0xffff)
 			bfnum = tfa_name2bf(Tfa1DatasheetNames, name);/* try generic table */
-		if (bfnum==0xffff)
+		if (bfnum == 0xffff)
 			bfnum = tfa_name2bf(Tfa1BitNames, name); /* try 2nd generic table */
 		break;
 	case 0x12:
 		bfnum = tfa_name2bf(Tfa9887DatasheetNames, name); /* my tabel 1st */
-		if (bfnum==0xffff)
+		if (bfnum == 0xffff)
 			bfnum = tfa_name2bf(Tfa1DatasheetNames, name);/* try generic table */
-		if (bfnum==0xffff)
+		if (bfnum == 0xffff)
 			bfnum = tfa_name2bf(Tfa1BitNames, name);/* try 2nd generic table */
 		break;
 	case 0x13:
 		bfnum =  tfa_name2bf(Tfa9912DatasheetNames, name);
-		if (bfnum==0xffff)
+		if (bfnum == 0xffff)
 			bfnum = tfa_name2bf(Tfa9912BitNames, name);/* try long bitname table */
 		break;
 	case 0x94:
 		bfnum =  tfa_name2bf(Tfa9894DatasheetNames, name);
-		if (bfnum==0xffff)
+		if (bfnum == 0xffff)
 			bfnum = tfa_name2bf(Tfa9894BitNames, name);/* try long bitname table */
 		break;
 
 	default:
 		PRINT_ERROR("unknown REVID:0x%0x\n", rev);
-		bfnum=0xffff;
+		bfnum = 0xffff;
 		break;
 	}
 
@@ -354,62 +355,62 @@ uint16_t tfaContBfEnumAny(const char *name)
 
 	/* datasheet names first */
 	bfnum =  tfa_name2bf(Tfa2DatasheetNames, name);
-	if (bfnum!=0xffff)
+	if (bfnum != 0xffff)
 		return bfnum;
 	bfnum =  tfa_name2bf(Tfa1DatasheetNames, name);
-	if (bfnum!=0xffff)
+	if (bfnum != 0xffff)
 		return bfnum;
 	bfnum =  tfa_name2bf(Tfa9891DatasheetNames, name);
-	if (bfnum!=0xffff)
+	if (bfnum != 0xffff)
 		return bfnum;
 	bfnum =  tfa_name2bf(Tfa9890DatasheetNames, name);
-	if (bfnum!=0xffff)
+	if (bfnum != 0xffff)
 		return bfnum;
 	bfnum =  tfa_name2bf(Tfa9887DatasheetNames, name);
-	if (bfnum!=0xffff)
+	if (bfnum != 0xffff)
 		return bfnum;
 	bfnum =  tfa_name2bf(Tfa9872DatasheetNames, name);
-	if (bfnum!=0xffff)
+	if (bfnum != 0xffff)
 		return bfnum;
-   	bfnum =  tfa_name2bf(Tfa9874DatasheetNames, name);
-	if (bfnum!=0xffff)
+	bfnum =  tfa_name2bf(Tfa9874DatasheetNames, name);
+	if (bfnum != 0xffff)
 		return bfnum;
 	bfnum =  tfa_name2bf(Tfa9896DatasheetNames, name);
-	if (bfnum!=0xffff)
+	if (bfnum != 0xffff)
 		return bfnum;
 	bfnum =  tfa_name2bf(Tfa9912DatasheetNames, name);
-	if (bfnum!=0xffff)
+	if (bfnum != 0xffff)
 		return bfnum;
 	bfnum =  tfa_name2bf(Tfa9894DatasheetNames, name);
-	if (bfnum!=0xffff)
+	if (bfnum != 0xffff)
 		return bfnum;
 	/* and then bitfield names */
 	bfnum =  tfa_name2bf(Tfa2BitNames, name);
-	if (bfnum!=0xffff)
+	if (bfnum != 0xffff)
 		return bfnum;
 	bfnum =  tfa_name2bf(Tfa1BitNames, name);
-	if (bfnum!=0xffff)
+	if (bfnum != 0xffff)
 		return bfnum;
 	bfnum =  tfa_name2bf(Tfa9891BitNames, name);
-	if (bfnum!=0xffff)
+	if (bfnum != 0xffff)
 		return bfnum;
 	bfnum =  tfa_name2bf(Tfa9890BitNames, name);
-	if (bfnum!=0xffff)
+	if (bfnum != 0xffff)
 		return bfnum;
 	bfnum =  tfa_name2bf(Tfa9887BitNames, name);
-	if (bfnum!=0xffff)
+	if (bfnum != 0xffff)
 		return bfnum;
 	bfnum =  tfa_name2bf(Tfa9872BitNames, name);
-	if (bfnum!=0xffff)
+	if (bfnum != 0xffff)
 		return bfnum;
     bfnum =  tfa_name2bf(Tfa9874BitNames, name);
-	if (bfnum!=0xffff)
+	if (bfnum != 0xffff)
 		return bfnum;
 	bfnum =  tfa_name2bf(Tfa9896BitNames, name);
-	if (bfnum!=0xffff)
+	if (bfnum != 0xffff)
 		return bfnum;
 	bfnum = tfa_name2bf(Tfa9912BitNames, name);
-	if (bfnum!=0xffff)
+	if (bfnum != 0xffff)
 		return bfnum;
 	bfnum = tfa_name2bf(Tfa9894BitNames, name);
 
