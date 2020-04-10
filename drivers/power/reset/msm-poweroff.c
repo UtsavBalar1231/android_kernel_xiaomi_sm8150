@@ -153,7 +153,7 @@ static void set_dload_mode(int on)
 	dload_mode_enabled = on;
 }
 
-static bool get_dload_mode(void)
+static __maybe_unused bool get_dload_mode(void)
 {
 	return dload_mode_enabled;
 }
