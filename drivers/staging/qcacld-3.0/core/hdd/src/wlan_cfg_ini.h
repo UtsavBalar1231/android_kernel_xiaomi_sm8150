@@ -132,6 +132,7 @@ const char wlan_cfg[] = {
 	"oce_enable_probe_req_deferral=0\n"
 	"adapt_dwell_lpf_weight=80\n"
 	"adapt_dwell_wifi_act_threshold=10\n"
+	"gMulticastHostFwMsgs=1\n"
 	"gEnablePacketLog=1\n"
 	"gBpfFilterEnable=1\n"
 	"gActiveUcBpfMode=1\n"
