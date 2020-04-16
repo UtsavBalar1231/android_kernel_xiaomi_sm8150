@@ -1322,7 +1322,6 @@ int goodix_ts_input_dev_config(struct goodix_ts_core *core_data)
 	input_set_capability(input_dev, EV_KEY, KEY_WAKEUP);
 	input_set_capability(input_dev, EV_KEY, BTN_INFO);
 	input_set_capability(input_dev, EV_KEY, KEY_GOTO);
-	input_set_capability(input_dev, EV_KEY, KEY_POWER);
 	/*input_set_capability(input_dev, EV_KEY, KEY_INFO);*/
 
 	r = input_register_device(input_dev);
@@ -1730,24 +1729,26 @@ int goodix_ts_msm_drm_notifier_callback(struct notifier_block *self,
 	struct msm_drm_notifier *msm_drm_event = data;
 	int blank;
 
-	if (unlikely(!msm_drm_event && !msm_drm_event->data)) {
-		ts_info("bad state change notifier call");
+	if (event != MSM_DRM_EVENT_BLANK && event != MSM_DRM_EARLY_EVENT_BLANK)
 		return NOTIFY_DONE;
-	}
 
 	if (msm_drm_event && msm_drm_event->data && core_data) {
 		blank = *(int *)(msm_drm_event->data);
 		flush_workqueue(core_data->event_wq);
-		if (event == MSM_DRM_EVENT_BLANK && blank == MSM_DRM_BLANK_UNBLANK) {
+		if (event == MSM_DRM_EVENT_BLANK && (blank == MSM_DRM_BLANK_POWERDOWN ||
+			blank == MSM_DRM_BLANK_LP1 || blank == MSM_DRM_BLANK_LP2)) {
+			ts_info("touchpanel suspend .....blank=%d\n", blank);
+			ts_info("touchpanel suspend .....suspend_stat=%d\n", atomic_read(&core_data->suspend_stat));
+			if (atomic_read(&core_data->suspend_stat))
+				return 0;
+			ts_info("touchpanel suspend by %s", blank == MSM_DRM_BLANK_POWERDOWN ? "blank" : "doze");
+			queue_work(core_data->event_wq, &core_data->suspend_work);
+		} else if (event == MSM_DRM_EVENT_BLANK && blank == MSM_DRM_BLANK_UNBLANK) {
+			//if (!atomic_read(&core_data->suspend_stat))
+			ts_info("core_data->suspend_stat = %d\n", atomic_read(&core_data->suspend_stat));
 			ts_info("touchpanel resume");
 			queue_work(core_data->event_wq, &core_data->resume_work);
-		} else if (event == MSM_DRM_EVENT_BLANK && (blank == MSM_DRM_BLANK_POWERDOWN ||
-			blank == MSM_DRM_BLANK_LP1 || blank == MSM_DRM_BLANK_LP2)) {
-			ts_info("touchpanel suspend by %s",
-				blank == MSM_DRM_BLANK_POWERDOWN ? "blank" : "doze");
-			queue_work(core_data->event_wq, &core_data->suspend_work);
 		}
-
 	}
 
 	return 0;
