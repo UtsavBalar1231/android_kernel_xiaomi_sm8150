@@ -71,7 +71,7 @@ static void sync_for_device(struct msm_gem_object *msm_obj)
 	}
 }
 
-static void sync_for_cpu(struct msm_gem_object *msm_obj)
+static __maybe_unused void sync_for_cpu(struct msm_gem_object *msm_obj)
 {
 	struct device *dev = msm_obj->base.dev->dev;
 
