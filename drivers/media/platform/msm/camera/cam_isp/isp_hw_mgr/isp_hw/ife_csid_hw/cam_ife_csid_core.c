@@ -4265,7 +4265,7 @@ int cam_ife_csid_hw_probe_init(struct cam_hw_intf  *csid_hw_intf,
 	for (i = 0; i <= CAM_IFE_PIX_PATH_RES_RDI_3; i++)
 		ife_csid_hw->rdi_path_config[i].measure_enabled = 0;
 
-	snprintf(worker_name, sizeof(worker_name),
+	scnprintf(worker_name, sizeof(worker_name),
 		"csid%u_worker", ife_csid_hw->hw_intf->hw_idx);
 	CAM_DBG(CAM_ISP, "Create CSID worker %s", worker_name);
 	rc = cam_req_mgr_workq_create(worker_name,
@@ -4280,8 +4280,6 @@ int cam_ife_csid_hw_probe_init(struct cam_hw_intf  *csid_hw_intf,
 	for (i = 0; i < CAM_CSID_WORKQ_NUM_TASK; i++)
 		ife_csid_hw->work->task.pool[i].payload =
 			&ife_csid_hw->work_data[i];
-
-	return 0;
 
 	/* Check if ppi bridge is present or not? */
 	ife_csid_hw->ppi_enable = of_property_read_bool(
