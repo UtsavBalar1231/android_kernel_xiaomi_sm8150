@@ -2553,7 +2553,6 @@ enum sched_boost_policy {
 #define FULL_THROTTLE_BOOST 1
 #define CONSERVATIVE_BOOST 2
 #define RESTRAINED_BOOST 3
-
 /*
  * Returns the rq capacity of any rq in a group. This does not play
  * well with groups where rq capacity can change independently.
@@ -2629,6 +2628,10 @@ extern int update_preferred_cluster(struct related_thread_group *grp,
 extern void set_preferred_cluster(struct related_thread_group *grp);
 extern void add_new_task_to_grp(struct task_struct *new);
 
+#define NO_BOOST 0
+#define FULL_THROTTLE_BOOST 1
+#define CONSERVATIVE_BOOST 2
+#define RESTRAINED_BOOST 3
 #define FULL_THROTTLE_BOOST_DISABLE -1
 #define CONSERVATIVE_BOOST_DISABLE -2
 #define RESTRAINED_BOOST_DISABLE -3
