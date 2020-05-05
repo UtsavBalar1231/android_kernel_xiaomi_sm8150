@@ -830,13 +830,13 @@ static int __driver_attach(struct device *dev, void *data)
 		return ret;
 	} /* ret > 0 means positive match */
 
-	if (dev->parent && dev->bus->need_parent_lock)
+	if (dev->parent)	/* Needed for USB */
 		device_lock(dev->parent);
 	device_lock(dev);
 	if (!dev->driver)
 		driver_probe_device(drv, dev);
 	device_unlock(dev);
-	if (dev->parent && dev->bus->need_parent_lock)
+	if (dev->parent)
 		device_unlock(dev->parent);
 
 	return 0;
@@ -928,7 +928,7 @@ void device_release_driver_internal(struct device *dev,
 				    struct device_driver *drv,
 				    struct device *parent)
 {
-	if (parent && dev->bus->need_parent_lock)
+	if (parent)
 		device_lock(parent);
 
 	device_lock(dev);
@@ -936,7 +936,7 @@ void device_release_driver_internal(struct device *dev,
 		__device_release_driver(dev, parent);
 
 	device_unlock(dev);
-	if (parent && dev->bus->need_parent_lock)
+	if (parent)
 		device_unlock(parent);
 }
 
