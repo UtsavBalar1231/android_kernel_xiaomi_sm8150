@@ -494,22 +494,22 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
 	if (!fscrypt_using_hardware_encryption(inode))
 		data_page = fscrypt_encrypt_page(inode, page, PAGE_SIZE, 0,
 						page->index, gfp_flags);
-		if (IS_ERR(data_page)) {
-			ret = PTR_ERR(data_page);
-			if (ret == -ENOMEM &&
-			    (io->io_bio || wbc->sync_mode == WB_SYNC_ALL)) {
-				gfp_flags = GFP_NOFS;
-				if (io->io_bio)
-					ext4_io_submit(io);
-				else
-					gfp_flags |= __GFP_NOFAIL;
-				congestion_wait(BLK_RW_ASYNC, HZ/50);
-				goto retry_encrypt;
-			}
-			data_page = NULL;
-			goto out;
+	if (IS_ERR(data_page)) {
+		ret = PTR_ERR(data_page);
+		if (ret == -ENOMEM &&
+		    (io->io_bio || wbc->sync_mode == WB_SYNC_ALL)) {
+			gfp_flags = GFP_NOFS;
+			if (io->io_bio)
+				ext4_io_submit(io);
+			else
+				gfp_flags |= __GFP_NOFAIL;
+			congestion_wait(BLK_RW_ASYNC, HZ/50);
+			goto retry_encrypt;
 		}
+		data_page = NULL;
+		goto out;
 	}
+}
 
 	/* Now submit buffers to write */
 	do {
