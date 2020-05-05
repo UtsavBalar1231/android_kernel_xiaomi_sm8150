@@ -44,6 +44,12 @@ struct fscrypt_mode fscrypt_modes[] = {
 		.keysize = 32,
 		.ivsize = 32,
 	},
+	[FSCRYPT_MODE_PRIVATE] = {
+		.friendly_name = "Inline encryption (AES-256-XTS)",
+		.cipher_str = NULL,
+		.keysize = 64,
+		.ivsize = 16,
+	},
 };
 
 static struct fscrypt_mode *
@@ -425,8 +431,20 @@ int fscrypt_get_encryption_info(struct inode *inode)
 		goto out;
 	}
 
-	memcpy(crypt_info->ci_nonce, fscrypt_context_nonce(&ctx),
-	       FS_KEY_DERIVATION_NONCE_SIZE);
+	switch (ctx.version) {
+	case FSCRYPT_CONTEXT_V1:
+		memcpy(crypt_info->ci_nonce, ctx.v1.nonce,
+		       FS_KEY_DERIVATION_NONCE_SIZE);
+		break;
+	case FSCRYPT_CONTEXT_V2:
+		memcpy(crypt_info->ci_nonce, ctx.v2.nonce,
+		       FS_KEY_DERIVATION_NONCE_SIZE);
+		break;
+	default:
+		WARN_ON(1);
+		res = -EINVAL;
+		goto out;
+	}
 
 	if (!fscrypt_supported_policy(&crypt_info->ci_policy, inode)) {
 		res = -EINVAL;

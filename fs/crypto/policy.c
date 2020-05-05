@@ -43,6 +43,10 @@ static bool fscrypt_valid_enc_modes(u32 contents_mode, u32 filenames_mode)
 	    filenames_mode == FSCRYPT_MODE_ADIANTUM)
 		return true;
 
+	if (contents_mode == FSCRYPT_MODE_PRIVATE &&
+	    filenames_mode == FSCRYPT_MODE_AES_256_CTS)
+		return true;
+
 	return false;
 }
 
@@ -143,6 +147,12 @@ static bool fscrypt_supported_v2_policy(const struct fscrypt_policy_v2 *policy,
 			     "Unsupported encryption modes (contents %d, filenames %d)",
 			     policy->contents_encryption_mode,
 			     policy->filenames_encryption_mode);
+		return false;
+	}
+
+	if (policy->contents_encryption_mode == FSCRYPT_MODE_PRIVATE) {
+		fscrypt_warn(inode,
+			     "FSCRYPT_MODE_PRIVATE is only supported for v1 policies");
 		return false;
 	}
 
@@ -258,7 +268,7 @@ int fscrypt_policy_from_context(union fscrypt_policy *policy_u,
 {
 	memset(policy_u, 0, sizeof(*policy_u));
 
-	if (!fscrypt_context_is_valid(ctx_u, ctx_size))
+	if (ctx_size <= 0 || ctx_size != fscrypt_context_size(ctx_u))
 		return -EINVAL;
 
 	switch (ctx_u->version) {
