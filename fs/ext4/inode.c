@@ -4140,11 +4140,6 @@ static int ext4_block_truncate_page(handle_t *handle,
 	if (IS_ENCRYPTED(inode) && !fscrypt_has_encryption_key(inode))
 		return 0;
 
-	/* If we are processing an encrypted inode during orphan list
-	 * handling */
-	if (IS_ENCRYPTED(inode) && !fscrypt_has_encryption_key(inode))
-		return 0;
-
 	blocksize = inode->i_sb->s_blocksize;
 	length = blocksize - (offset & (blocksize - 1));
 
