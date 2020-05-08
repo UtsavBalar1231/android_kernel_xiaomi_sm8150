@@ -581,10 +581,6 @@ static int32_t afe_callback(struct apr_client_data *data, void *priv)
 		uint32_t *payload = data->payload;
 		uint32_t param_id;
 
-#ifdef CONFIG_MSM_CSPL
-		if (crus_afe_callback(data->payload, data->payload_size) == 0)
-			return 0;
-#endif
 		if (!payload || (data->token >= AFE_MAX_PORTS)) {
 			pr_err("%s: Error: size %d payload %pK token %d\n",
 				__func__, data->payload_size,
