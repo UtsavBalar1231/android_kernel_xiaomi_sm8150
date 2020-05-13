@@ -21,6 +21,7 @@
 		qcom,affinity = <0>;
 		reg = <0x18358800 0x1000>,
 			<0x18323000 0x1000>;
+		qcom,no-cooling-device-register;
 		#thermal-sensor-cells = <0>;
 	};
 
@@ -30,6 +31,7 @@
 		qcom,affinity = <1>;
 		reg = <0x18350800 0x1000>,
 			<0x18325800 0x1000>;
+		qcom,no-cooling-device-register;
 		#thermal-sensor-cells = <0>;
 		isens_vref_0p8-supply = <&pm8150_l5_ao>;
 		isens-vref-0p8-settings = <880000 880000 20000>;
