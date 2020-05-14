@@ -676,7 +676,7 @@ static int lan78xx_eeprom_confirm_not_busy(struct lan78xx_net *dev)
 static int lan78xx_read_raw_eeprom(struct lan78xx_net *dev, u32 offset,
 				   u32 length, u8 *data)
 {
-	u32 val;
+	u32 val = 0;
 	u32 saved;
 	int i, ret;
 	int retval;
@@ -744,7 +744,7 @@ static int lan78xx_read_eeprom(struct lan78xx_net *dev, u32 offset,
 static int lan78xx_write_raw_eeprom(struct lan78xx_net *dev, u32 offset,
 				    u32 length, u8 *data)
 {
-	u32 val;
+	u32 val = 0;
 	u32 saved;
 	int i, ret;
 	int retval;
@@ -813,7 +813,7 @@ static int lan78xx_read_raw_otp(struct lan78xx_net *dev, u32 offset,
 {
 	int i;
 	int ret;
-	u32 buf;
+	u32 buf = 0;
 	unsigned long timeout;
 
 	ret = lan78xx_read_reg(dev, OTP_PWR_DN, &buf);
@@ -867,7 +867,7 @@ static int lan78xx_write_raw_otp(struct lan78xx_net *dev, u32 offset,
 {
 	int i;
 	int ret;
-	u32 buf;
+	u32 buf = 0;
 	unsigned long timeout;
 
 	ret = lan78xx_read_reg(dev, OTP_PWR_DN, &buf);
@@ -961,7 +961,7 @@ static int lan78xx_dataport_write(struct lan78xx_net *dev, u32 ram_select,
 				  u32 addr, u32 length, u32 *buf)
 {
 	struct lan78xx_priv *pdata = (struct lan78xx_priv *)(dev->data[0]);
-	u32 dp_sel;
+	u32 dp_sel = 0;
 	int i, ret;
 
 	if (usb_autopm_get_interface(dev->intf) < 0)
@@ -1150,7 +1150,7 @@ static int lan78xx_link_reset(struct lan78xx_net *dev)
 	struct phy_device *phydev = dev->net->phydev;
 	struct ethtool_link_ksettings ecmd;
 	int ladv, radv, ret;
-	u32 buf;
+	u32 buf = 0;
 
 	/* clear LAN78xx interrupt status */
 	ret = lan78xx_write_reg(dev, INT_STS, INT_STS_PHY_INT_);
@@ -1341,7 +1341,7 @@ static void lan78xx_get_wol(struct net_device *netdev,
 {
 	struct lan78xx_net *dev = netdev_priv(netdev);
 	int ret;
-	u32 buf;
+	u32 buf = 0;
 	struct lan78xx_priv *pdata = (struct lan78xx_priv *)(dev->data[0]);
 
 	if (usb_autopm_get_interface(dev->intf) < 0)
@@ -1394,7 +1394,7 @@ static int lan78xx_get_eee(struct net_device *net, struct ethtool_eee *edata)
 	struct lan78xx_net *dev = netdev_priv(net);
 	struct phy_device *phydev = net->phydev;
 	int ret;
-	u32 buf;
+	u32 buf = 0;
 
 	ret = usb_autopm_get_interface(dev->intf);
 	if (ret < 0)
@@ -1431,7 +1431,7 @@ static int lan78xx_set_eee(struct net_device *net, struct ethtool_eee *edata)
 {
 	struct lan78xx_net *dev = netdev_priv(net);
 	int ret;
-	u32 buf;
+	u32 buf = 0;
 
 	ret = usb_autopm_get_interface(dev->intf);
 	if (ret < 0)
@@ -1630,7 +1630,7 @@ static int lan78xx_ioctl(struct net_device *netdev, struct ifreq *rq, int cmd)
 
 static void lan78xx_init_mac_address(struct lan78xx_net *dev)
 {
-	u32 addr_lo, addr_hi;
+	u32 addr_lo = 0, addr_hi = 0;
 	int ret;
 	u8 addr[6];
 
@@ -1682,7 +1682,7 @@ static void lan78xx_init_mac_address(struct lan78xx_net *dev)
 static int lan78xx_mdiobus_read(struct mii_bus *bus, int phy_id, int idx)
 {
 	struct lan78xx_net *dev = bus->priv;
-	u32 val, addr;
+	u32 val = 0, addr;
 	int ret;
 
 	ret = usb_autopm_get_interface(dev->intf);
@@ -1881,7 +1881,7 @@ static void lan78xx_irq_bus_sync_unlock(struct irq_data *irqd)
 	struct irq_domain_data *data = irq_data_get_irq_chip_data(irqd);
 	struct lan78xx_net *dev =
 			container_of(data, struct lan78xx_net, domain_data);
-	u32 buf;
+	u32 buf = 0;
 	int ret;
 
 	/* call register access here because irq_bus_lock & irq_bus_sync_unlock
@@ -1907,7 +1907,7 @@ static int lan78xx_setup_irq_domain(struct lan78xx_net *dev)
 	struct device_node *of_node;
 	struct irq_domain *irqdomain;
 	unsigned int irqmap = 0;
-	u32 buf;
+	u32 buf = 0;
 	int ret = 0;
 
 	of_node = dev->udev->dev.parent->of_node;
@@ -1955,7 +1955,7 @@ static void lan78xx_remove_irq_domain(struct lan78xx_net *dev)
 
 static int lan8835_fixup(struct phy_device *phydev)
 {
-	int buf;
+	int buf = 0;
 	int ret;
 	struct lan78xx_net *dev = netdev_priv(phydev->attached_dev);
 
@@ -2086,7 +2086,7 @@ error:
 static int lan78xx_set_rx_max_frame_length(struct lan78xx_net *dev, int size)
 {
 	int ret = 0;
-	u32 buf;
+	u32 buf = 0;
 	bool rxenabled;
 
 	ret = lan78xx_read_reg(dev, MAC_RX, &buf);
@@ -2301,7 +2301,7 @@ static int lan78xx_vlan_rx_kill_vid(struct net_device *netdev,
 static void lan78xx_init_ltm(struct lan78xx_net *dev)
 {
 	int ret;
-	u32 buf;
+	u32 buf = 0;
 	u32 regs[6] = { 0 };
 
 	ret = lan78xx_read_reg(dev, USB_CFG1, &buf);
@@ -2340,7 +2340,7 @@ static void lan78xx_init_ltm(struct lan78xx_net *dev)
 static int lan78xx_reset(struct lan78xx_net *dev)
 {
 	struct lan78xx_priv *pdata = (struct lan78xx_priv *)(dev->data[0]);
-	u32 buf;
+	u32 buf = 0;
 	int ret = 0;
 	unsigned long timeout;
 	u8 sig;
@@ -3721,7 +3721,7 @@ static u16 lan78xx_wakeframe_crc16(const u8 *buf, int len)
 
 static int lan78xx_set_suspend(struct lan78xx_net *dev, u32 wol)
 {
-	u32 buf;
+	u32 buf = 0;
 	int ret;
 	int mask_index;
 	u16 crc;
@@ -3866,7 +3866,7 @@ static int lan78xx_suspend(struct usb_interface *intf, pm_message_t message)
 {
 	struct lan78xx_net *dev = usb_get_intfdata(intf);
 	struct lan78xx_priv *pdata = (struct lan78xx_priv *)(dev->data[0]);
-	u32 buf;
+	u32 buf = 0;
 	int ret;
 	int event;
 
@@ -3964,7 +3964,7 @@ static int lan78xx_resume(struct usb_interface *intf)
 	struct sk_buff *skb;
 	struct urb *res;
 	int ret;
-	u32 buf;
+	u32 buf = 0;
 
 	if (!timer_pending(&dev->stat_monitor)) {
 		dev->delta = 1;
