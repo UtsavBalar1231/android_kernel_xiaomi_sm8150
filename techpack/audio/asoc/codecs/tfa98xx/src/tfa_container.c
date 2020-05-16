@@ -77,7 +77,7 @@ enum tfa_error tfa_load_cnt(void *cnt, int length)
 /*
  * Dump the contents of the file header
  */
-void tfaContShowHeader(TfaHeader_t *hdr) 
+void tfaContShowHeader(TfaHeader_t *hdr)
 {
 	char _id[2];
 
@@ -187,7 +187,7 @@ TfaLiveDataList_t *tfaContGetDevLiveDataList(TfaContainer_t *cont, int devIdx,
 /*
  * Get the max volume step associated with Nth profile for the Nth device
  */
-int tfacont_get_max_vstep(struct tfa_device *tfa, int prof_idx) 
+int tfacont_get_max_vstep(struct tfa_device *tfa, int prof_idx)
 {
 	TfaVolumeStep2File_t *vp;
 	struct TfaVolumeStepMax2File *vp3;
@@ -684,7 +684,7 @@ enum Tfa98xx_Error tfaContWriteFile(struct tfa_device *tfa, TfaFileDsc_t *file, 
 		err = tfaGetFwApiVersion(tfa, (unsigned char *)&tfa->fw_itf_ver[0]);
 		if (err) {
 		    pr_debug("[%s] cannot get FWAPI error = %d\n", __func__, err);
-		    return err;
+		return err;
 		}
 				for (i = 0; i < 3; i++)
 				{
@@ -2146,7 +2146,7 @@ TfaDeviceList_t *tfaContDevice(TfaContainer_t *cnt, int dev_idx)
  *  - calculate the total length of the input
  *  - the input profile + its length is the next profile
  */
-TfaProfileList_t* tfaContNextProfile(TfaProfileList_t* prof) 
+TfaProfileList_t *tfaContNextProfile(TfaProfileList_t *prof)
 {
 	uint8_t *this, *next; /* byte pointers for byte pointer arithmetic */
 	TfaProfileList_t *nextprof;
@@ -2174,7 +2174,7 @@ TfaProfileList_t* tfaContNextProfile(TfaProfileList_t* prof)
 /*
  * return the next livedata
  */
-TfaLiveDataList_t* tfaContNextLiveData(TfaLiveDataList_t* livedata) 
+TfaLiveDataList_t *tfaContNextLiveData(TfaLiveDataList_t *livedata)
 {
 	TfaLiveDataList_t *nextlivedata = (TfaLiveDataList_t *)((char *)livedata + (livedata->length * 4) +
 		sizeof(TfaLiveDataList_t) - 4);

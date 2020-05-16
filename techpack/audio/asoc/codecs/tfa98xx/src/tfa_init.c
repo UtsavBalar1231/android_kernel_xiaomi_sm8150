@@ -156,7 +156,7 @@ static int tfa_get_swvstep(struct tfa_device *tfa)
 	return value - 1; /* invalid if 0 */
 }
 
-static int tfa_get_mtpb(struct tfa_device *tfa) 
+static int tfa_get_mtpb(struct tfa_device *tfa)
 {
 
 	int value = 0;
@@ -723,7 +723,7 @@ static enum Tfa98xx_Error tfa9873_dsp_system_stable(struct tfa_device *tfa, int 
 	return error;
 }
 
-static int tfa9873_get_mtpb(struct tfa_device *tfa) 
+static int tfa9873_get_mtpb(struct tfa_device *tfa)
 {
 
 	int value;
@@ -780,14 +780,15 @@ static enum Tfa98xx_Error tfa9873_specific(struct tfa_device *tfa)
 		break;
 	case 0x0b73:
 		/* ----- generated code start ----- */
-		/* -----  version 12 ----- */
+		/* -----  version 13 ----- */
 		reg_write(tfa, 0x02, 0x0628); //POR=0x0008
 		reg_write(tfa, 0x61, 0x0183); //POR=0x0182
-	reg_write(tfa, 0x63, 0x005a); //POR=0x055a
-		reg_write(tfa, 0x6f, 0x00a3); //POR=0x00a5
+		reg_write(tfa, 0x63, 0x005a); //POR=0x055a
+		reg_write(tfa, 0x6f, 0x0083); //POR=0x00a5
 		reg_write(tfa, 0x70, 0xa3fb); //POR=0x23fb
 		reg_write(tfa, 0x73, 0x0187); //POR=0x0107
 		reg_write(tfa, 0x83, 0x009a); //POR=0x0799
+		reg_write(tfa, 0x85, 0x0380); //POR=0x0382
 		reg_write(tfa, 0xd5, 0x004d); //POR=0x014d
 		/* ----- generated code end   ----- */
 		break;
@@ -797,7 +798,8 @@ static enum Tfa98xx_Error tfa9873_specific(struct tfa_device *tfa)
 		pr_info("\nWarning: Optimal settings not found for device with revid = 0x%x\n", tfa->rev);
 		break;
 	}
-
+	error = tfa_set_bf_volatile(tfa, TFA9873_BF_FSSYNCEN, 0);
+	pr_info("info : disabled FS synchronisation!\n");
 	return error;
 }
 void tfa9873_ops(struct tfa_device_ops *ops)
@@ -846,8 +848,8 @@ static enum Tfa98xx_Error tfa9874_specific(struct tfa_device *tfa)
 
 	switch (tfa->rev) {
 	case 0x0a74: /* Initial revision ID */
-		 /* ----- generated code start ----- */
-		 /* V25 */
+				 /* ----- generated code start ----- */
+				 /* V25 */
 		reg_write(tfa, 0x02, 0x22a8); //POR=0x25c8
 		reg_write(tfa, 0x51, 0x0020); //POR=0x0000
 		reg_write(tfa, 0x52, 0x57dc); //POR=0x56dc
@@ -864,7 +866,7 @@ static enum Tfa98xx_Error tfa9874_specific(struct tfa_device *tfa)
 		reg_write(tfa, 0x85, 0x0001); //POR=0x0003
 		reg_write(tfa, 0x88, 0x0000); //POR=0x0002
 		reg_write(tfa, 0xc4, 0x2001); //POR=0x0001
-		/* ----- generated code end   ----- */
+									  /* ----- generated code end   ----- */
 		break;
 	case 0x0b74:
 		/* ----- generated code start ----- */
@@ -885,7 +887,7 @@ static enum Tfa98xx_Error tfa9874_specific(struct tfa_device *tfa)
 		reg_write(tfa, 0x85, 0x0001); //POR=0x0003
 		reg_write(tfa, 0x88, 0x0000); //POR=0x0002
 		reg_write(tfa, 0xc4, 0x2001); //POR=0x0001
-		/* ----- generated code end   ----- */
+									  /* ----- generated code end   ----- */
 		break;
 	case 0x0c74:
 		/* ----- generated code start ----- */
@@ -903,7 +905,7 @@ static enum Tfa98xx_Error tfa9874_specific(struct tfa_device *tfa)
 		reg_write(tfa, 0x80, 0x0000); //POR=0x0003
 		reg_write(tfa, 0x83, 0x0799); //POR=0x061a
 		reg_write(tfa, 0x84, 0x0081); //POR=0x0021
-		/* ----- generated code end   ----- */
+									  /* ----- generated code end   ----- */
 		break;
 	default:
 		pr_info("\nWarning: Optimal settings not found for device with revid = 0x%x\n", tfa->rev);
@@ -961,7 +963,7 @@ static enum Tfa98xx_Error tfa9874_dsp_system_stable(struct tfa_device *tfa, int 
 	return error;
 }
 
-static int tfa9874_get_mtpb(struct tfa_device *tfa) 
+static int tfa9874_get_mtpb(struct tfa_device *tfa)
 {
 
 	int value;
@@ -1105,7 +1107,7 @@ static enum Tfa98xx_Error tfa9878_dsp_system_stable(struct tfa_device *tfa, int 
 	return error;
 }
 
-static int tfa9878_get_mtpb(struct tfa_device *tfa) 
+static int tfa9878_get_mtpb(struct tfa_device *tfa)
 {
 
 	int value;

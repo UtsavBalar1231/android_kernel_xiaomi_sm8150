@@ -520,7 +520,7 @@ static ssize_t tfa98xx_dbgfs_start_set(struct file *file,
 	struct tfa98xx *tfa98xx = i2c_get_clientdata(i2c);
 	enum tfa_error ret;
 	char buf[32];
-	const char ref[] = "please calibrate now";
+	static const char ref[] = "please calibrate now";
 	int buf_size, cal_profile = 0;
 
 	/* check string length, and account for eol */
@@ -677,10 +677,10 @@ static ssize_t tfa98xx_dbgfs_dsp_state_set(struct file *file,
 	struct tfa98xx *tfa98xx = i2c_get_clientdata(i2c);
 	enum tfa_error ret;
 	char buf[32];
-	const char start_cmd[] = "start";
-	const char stop_cmd[] = "stop";
-	const char mon_start_cmd[] = "monitor start";
-	const char mon_stop_cmd[] = "monitor stop";
+	static const char start_cmd[] = "start";
+	static const char stop_cmd[] = "stop";
+	static const char mon_start_cmd[] = "monitor start";
+	static const char mon_stop_cmd[] = "monitor stop";
 	int buf_size;
 
 	buf_size = min(count, (size_t)(sizeof(buf) - 1));
@@ -1780,6 +1780,7 @@ static int tfa98xx_create_controls(struct tfa98xx *tfa98xx)
 		ret = snd_soc_add_codec_controls(tfa98xx->codec,
 				nxp_spk_id_controls, ARRAY_SIZE(nxp_spk_id_controls));
 	}
+
 	return ret;
 }
 
@@ -2406,10 +2407,6 @@ static void tfa98xx_container_loaded(const struct firmware *cont, void *context)
 
 		mutex_unlock(&tfa98xx->dsp_lock);
 	}
-	if (tfa98xx->flags & TFA98XX_FLAG_ADAPT_NOISE_MODE)
-		queue_delayed_work(tfa98xx->tfa98xx_wq,
-						&tfa98xx->nmodeupdate_work,
-						0);
 	tfa98xx_interrupt_enable(tfa98xx, true);
 }
 
@@ -2824,7 +2821,6 @@ static int tfa98xx_hw_params(struct snd_pcm_substream *substream,
 
 	if (no_start != 0)
 		return 0;
-
 	/* check if samplerate is supported for this mixer profile */
 	prof_idx = get_profile_id_for_sr(tfa98xx_mixer_profile, rate);
 	if (prof_idx < 0) {
@@ -2966,6 +2962,8 @@ static int tfa98xx_mute(struct snd_soc_dai *dai, int mute, int stream)
 		tfa_dev_stop(tfa98xx->tfa);
 		tfa98xx->dsp_init = TFA98XX_DSP_INIT_STOPPED;
 		mutex_unlock(&tfa98xx->dsp_lock);
+	if (tfa98xx->flags & TFA98XX_FLAG_ADAPT_NOISE_MODE)
+		cancel_delayed_work_sync(&tfa98xx->nmodeupdate_work);
 	} else {
 		if (stream == SNDRV_PCM_STREAM_PLAYBACK) {
 			tfa98xx->pstream = 1;
@@ -2989,6 +2987,10 @@ static int tfa98xx_mute(struct snd_soc_dai *dai, int mute, int stream)
 		if (tfa98xx->dsp_init != TFA98XX_DSP_INIT_PENDING)
 			tfa98xx_dsp_init(tfa98xx);
 #endif
+	if (tfa98xx->flags & TFA98XX_FLAG_ADAPT_NOISE_MODE)
+			queue_delayed_work(tfa98xx->tfa98xx_wq,
+						&tfa98xx->nmodeupdate_work,
+						0);
 	}
 
 	return 0;
@@ -3109,7 +3111,7 @@ static int tfa98xx_remove(struct snd_soc_codec *codec)
 #endif
 }
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 16, 0)) && (LINUX_VERSION_CODE < KERNEL_VERSION(4, 18, 0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 16, 0)) && (KERNEL_VERSION(4, 18, 0) > LINUX_VERSION_CODE)
 static struct regmap *tfa98xx_get_regmap(struct device *dev)
 {
 	struct tfa98xx *tfa98xx = dev_get_drvdata(dev);
@@ -3125,7 +3127,7 @@ static struct snd_soc_codec_driver soc_codec_dev_tfa98xx = {
 #endif
 	.probe =	tfa98xx_probe,
 	.remove =	tfa98xx_remove,
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 16, 0)) && (LINUX_VERSION_CODE < KERNEL_VERSION(4, 18, 0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 16, 0)) && (KERNEL_VERSION(4, 18, 0) > LINUX_VERSION_CODE)
 	.get_regmap = tfa98xx_get_regmap,
 #endif
 };
