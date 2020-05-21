@@ -3154,6 +3154,48 @@ out:
 	return err < 0 ? err : count;
 }
 
+static ssize_t proc_sched_task_top_app_read(struct file *file, char __user *buf,
+					    size_t count, loff_t *ppos)
+{
+	struct task_struct *task;
+	char buffer[PROC_NUMBUF];
+	unsigned int top_app;
+	ssize_t len;
+
+	task = get_proc_task(file_inode(file));
+	if (!task)
+		return -ESRCH;
+
+	top_app = task->top_app;
+	put_task_struct(task);
+
+	len = snprintf(buffer, sizeof(buffer), "%u\n", top_app);
+
+	return simple_read_from_buffer(buf, count, ppos, buffer, len);
+}
+
+static ssize_t
+proc_sched_task_top_app_write(struct file *file, const char __user *buf,
+			      size_t count, loff_t *ppos)
+{
+	struct task_struct *task;
+	unsigned int top_app;
+	int ret;
+
+	ret = kstrtouint_from_user(buf, count, 0, &top_app);
+	if (ret < 0)
+		return ret;
+
+	task = get_proc_task(file_inode(file));
+	if (!task)
+		return -ESRCH;
+
+	task->top_app = !!top_app;
+	put_task_struct(task);
+
+	return count;
+}
+
 static const struct file_operations proc_task_boost_enabled_operations = {
 	.read       = proc_sched_task_boost_read,
 	.write      = proc_sched_task_boost_write,
@@ -3163,6 +3205,12 @@ static const struct file_operations proc_task_boost_enabled_operations = {
 static const struct file_operations proc_task_boost_period_operations = {
 	.read		= proc_sched_task_boost_period_read,
 	.write		= proc_sched_task_boost_period_write,
+	.llseek		= generic_file_llseek,
+};
+
+static const struct file_operations proc_task_top_app_operations = {
+	.read		= proc_sched_task_top_app_read,
+	.write		= proc_sched_task_top_app_write,
 	.llseek		= generic_file_llseek,
 };
 
@@ -3347,6 +3395,7 @@ static const struct pid_entry tgid_base_stuff[] = {
 	REG("sched_boost", 0666,  proc_task_boost_enabled_operations),
 	REG("sched_boost_period_ms", 0666, proc_task_boost_period_operations),
 	REG("sched_low_latency", 00666, proc_pid_sched_low_latency_operations),
+	REG("top_app",  0666, proc_task_top_app_operations),
 #endif
 #ifdef CONFIG_SCHED_DEBUG
 	REG("sched",      S_IRUGO|S_IWUSR, proc_pid_sched_operations),

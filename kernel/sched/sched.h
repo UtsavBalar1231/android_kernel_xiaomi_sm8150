@@ -2638,6 +2638,18 @@ static inline int sched_boost(void)
 	return sched_boost_type;
 }
 
+/* sysctl variable only */
+extern unsigned int sched_boost_on_top;
+static inline int sched_boost_top(void)
+{
+	return sched_boost_on_top;
+}
+
+static inline bool task_top_app(struct task_struct *p)
+{
+	return p->top_app;
+}
+
 extern int preferred_cluster(struct sched_cluster *cluster,
 						struct task_struct *p);
 extern struct sched_cluster *rq_cluster(struct rq *rq);
@@ -2724,10 +2736,14 @@ void note_task_waking(struct task_struct *p, u64 wallclock);
 
 static inline bool task_placement_boost_enabled(struct task_struct *p)
 {
-	if (likely(sched_boost_policy() == SCHED_BOOST_NONE))
-		return false;
+	bool ret = false;
 
-	return task_sched_boost(p);
+	if (task_sched_boost(p))
+		ret = sched_boost_policy() != SCHED_BOOST_NONE;
+	if (ret && sched_boost_top())
+		ret = task_top_app(p);
+
+	return ret;
 }
 
 static inline enum sched_boost_policy task_boost_policy(struct task_struct *p)
@@ -2743,10 +2759,12 @@ static inline enum sched_boost_policy task_boost_policy(struct task_struct *p)
 	if (policy == SCHED_BOOST_ON_BIG) {
 		/*
 		 * Filter out tasks less than min task util threshold
-		 * under conservative boost.
+		 * under conservative boost. Also filter out non-top
+		 * tasks if specified.
 		 */
-		if (sched_boost() == CONSERVATIVE_BOOST &&
+		if ((sched_boost() == CONSERVATIVE_BOOST &&
 			task_util(p) <= sysctl_sched_min_task_util_for_boost)
+			|| (sched_boost_top() && !task_top_app(p)))
 			policy = SCHED_BOOST_NONE;
 	}
 
@@ -2784,6 +2802,16 @@ static inline int sched_boost(void)
 static inline enum sched_boost_policy task_boost_policy(struct task_struct *p)
 {
 	return SCHED_BOOST_NONE;
+}
+
+static inline int sched_boost_top(void)
+{
+	return 0;
+}
+
+static inline bool task_top_app(struct task_struct *p)
+{
+	return false;
 }
 
 static inline bool

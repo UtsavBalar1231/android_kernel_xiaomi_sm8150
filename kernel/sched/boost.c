@@ -23,8 +23,11 @@
  * boost is responsible for disabling it as well.
  */
 
-unsigned int sysctl_sched_boost; /* To/from userspace */
+/* To/from userspace */
+unsigned int sysctl_sched_boost;
+unsigned int sysctl_sched_boost_top_app = 1; /* boost on top-app only */
 unsigned int sched_boost_type; /* currently activated sched boost */
+unsigned int sched_boost_on_top;
 enum sched_boost_policy boost_policy;
 
 static enum sched_boost_policy boost_policy_dt = SCHED_BOOST_NONE;
@@ -264,9 +267,9 @@ int sched_set_boost(int type)
 	return ret;
 }
 
-int sched_boost_handler(struct ctl_table *table, int write,
+int _sched_boost_handler(struct ctl_table *table, int write,
 		void __user *buffer, size_t *lenp,
-		loff_t *ppos)
+		loff_t *ppos, bool top_app_boost)
 {
 	int ret;
 	unsigned int *data = (unsigned int *)table->data;
@@ -278,12 +281,28 @@ int sched_boost_handler(struct ctl_table *table, int write,
 	if (ret || !write)
 		goto done;
 
-	if (verify_boost_params(*data))
-		_sched_set_boost(*data);
-	else
+	if (!verify_boost_params(*data)) {
 		ret = -EINVAL;
+		goto done;
+	}
 
+	_sched_set_boost(*data);
+	if (top_app_boost)
+		sched_boost_on_top = *data;
 done:
 	mutex_unlock(&boost_mutex);
 	return ret;
+}
+
+
+int sched_boost_handler(struct ctl_table *table, int write,
+		void __user *buffer, size_t *lenp, loff_t *ppos)
+{
+	return _sched_boost_handler(table, write, buffer, lenp, ppos, false);
+}
+
+int sched_boost_top_app_handler(struct ctl_table *table, int write,
+		void __user *buffer, size_t *lenp, loff_t *ppos)
+{
+	return _sched_boost_handler(table, write, buffer, lenp, ppos, true);
 }

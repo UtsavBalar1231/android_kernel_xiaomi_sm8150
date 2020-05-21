@@ -822,6 +822,9 @@ struct task_struct {
 	bool misfit;
 	u32 unfilter;
 	bool low_latency;
+
+	/* Top app tasks get boosted if specified */
+	unsigned int			top_app;
 #endif
 
 #ifdef CONFIG_CGROUP_SCHED

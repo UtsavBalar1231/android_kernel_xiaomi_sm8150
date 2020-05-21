@@ -400,6 +400,15 @@ static struct ctl_table kern_table[] = {
 		.extra2		= &three,
 	},
 	{
+		.procname	= "sched_boost_top_app",
+		.data		= &sysctl_sched_boost_top_app,
+		.maxlen		= sizeof(unsigned int),
+		.mode		= 0644,
+		.proc_handler	= sched_boost_top_app_handler,
+		.extra1		= &zero,
+		.extra2		= &one,
+	},
+	{
 		.procname	= "sched_conservative_pl",
 		.data		= &sysctl_sched_conservative_pl,
 		.maxlen		= sizeof(unsigned int),
