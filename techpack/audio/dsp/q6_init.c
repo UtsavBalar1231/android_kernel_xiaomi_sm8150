@@ -33,7 +33,9 @@ static int __init audio_q6_init(void)
 	audio_slimslave_init();
 	avtimer_init();
 	msm_mdf_init();
+#if CONFIG_VOICE_MHI
 	voice_mhi_init();
+#endif
 	elliptic_driver_init();
 /* for mius start */
 #ifdef CONFIG_US_PROXIMITY
@@ -59,7 +61,9 @@ static void __exit audio_q6_exit(void)
 	rtac_exit();
 	audio_cal_exit();
 	adsp_err_exit();
+#if CONFIG_VOICE_MHI
 	voice_mhi_exit();
+#endif
 	elliptic_driver_exit();
 /* for mius start */
 #ifdef CONFIG_US_PROXIMITY
