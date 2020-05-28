@@ -433,8 +433,10 @@ static int gsx_gesture_ist(struct goodix_ts_core *core_data,
 	ts_debug("fod_status= %d aod_status=%d", core_data->fod_status, core_data->aod_status);
 	ts_debug("sleep_finger： %d", !core_data->sleep_finger);*/
 
-	if (core_data->fod_status || core_data->aod_status) {
-		if ((FP_Event_Gesture == 1) && (temp_data[2] == 0x46)) {
+	if ((core_data->fod_status == 1 || core_data->fod_status == 3) ||
+			core_data->aod_status) {
+		if ((FP_Event_Gesture == 1) && (temp_data[2] == 0x46) &&
+		!core_data->sleep_finger) {
 
 			x = temp_data[4] | (temp_data[5] << 8);
 			y = temp_data[6] | (temp_data[7] << 8);
@@ -444,7 +446,7 @@ static int gsx_gesture_ist(struct goodix_ts_core *core_data,
 			input_mt_slot(core_data->input_dev, 0);
 			input_mt_report_slot_state(core_data->input_dev, MT_TOOL_FINGER, true);
 			input_report_key(core_data->input_dev, BTN_INFO, 1);
-			/*input_report_key(core_data->input_dev, KEY_INFO, 1);*/
+			input_report_key(core_data->input_dev, KEY_INFO, 1);
 			input_report_key(core_data->input_dev, BTN_TOUCH, 1);
 			input_report_key(core_data->input_dev, BTN_TOOL_FINGER, 1);
 			input_report_abs(core_data->input_dev, ABS_MT_TOOL_TYPE, MT_TOOL_FINGER);
@@ -483,7 +485,7 @@ static int gsx_gesture_ist(struct goodix_ts_core *core_data,
 			input_mt_report_slot_state(core_data->input_dev, MT_TOOL_FINGER, false);
 			input_report_abs(core_data->input_dev, ABS_MT_WIDTH_MINOR, 0);
 			input_report_key(core_data->input_dev, BTN_INFO, 0);
-			/*input_report_key(core_data->input_dev, KEY_INFO, 0);*/
+			input_report_key(core_data->input_dev, KEY_INFO, 0);
 			input_report_key(core_data->input_dev, BTN_TOUCH, 0);
 			input_report_key(core_data->input_dev, BTN_TOOL_FINGER, 0);
 			input_sync(core_data->input_dev);
@@ -543,29 +545,48 @@ static int goodix_set_suspend_func(struct goodix_ts_core *core_data)
 	u8 state_data[3] = {0};
 	int ret;
 
-	if (core_data->double_wakeup && (core_data->aod_status || core_data->fod_status)) {
+	if (core_data->double_wakeup &&
+			((core_data->fod_status == 1 || core_data->fod_status == 3) ||
+                        core_data->aod_status)) {
 		state_data[0] = GSX_GESTURE_CMD;
 		state_data[1] = 0x01;
 		state_data[2] = 0xF7;
 		ret = goodix_i2c_write(dev, GSX_REG_GESTURE, state_data, 3);
+		if (!ret) {
+			atomic_set(&core_data->suspend_stat, TP_GESTURE_DBCLK_FOD);
+		}
 		ts_info("Set IC double wakeup mode on,FOD mode on;");
-	} else if (core_data->double_wakeup && (core_data->aod_status == 0 && !core_data->fod_status)) {
+	} else if (core_data->double_wakeup &&
+			(core_data->fod_status != 1 && core_data->fod_status != 3)) {
 		state_data[0] = GSX_GESTURE_CMD;
 		state_data[1] = 0x03;
 		state_data[2] = 0xF5;
 		ret = goodix_i2c_write(dev, GSX_REG_GESTURE, state_data, 3);
+		if (!ret) {
+			atomic_set(&core_data->suspend_stat, TP_GESTURE_DBCLK);
+		}
 		ts_info("Set IC double wakeup mode on,FOD mode off;");
-	} else if (!core_data->double_wakeup && (core_data->aod_status || core_data->fod_status)) {
+	} else if (!core_data->double_wakeup &&
+			((core_data->fod_status == 1 || core_data->fod_status == 3) ||
+			core_data->aod_status)) {
 		state_data[0] = GSX_GESTURE_CMD;
 		state_data[1] = 0x00;
 		state_data[2] = 0xF8;
 		ret = goodix_i2c_write(dev, GSX_REG_GESTURE, state_data, 3);
+		if (!ret) {
+			atomic_set(&core_data->suspend_stat, TP_GESTURE_FOD);
+		}
 		ts_info("Set IC double wakeup mode off,FOD mode on;");
-	} else if (!core_data->double_wakeup && (core_data->aod_status == 0 && !core_data->fod_status)) {
+	} else if (!core_data->double_wakeup &&
+			((core_data->fod_status != 1 && core_data->fod_status != 3) ||
+                        core_data->aod_status)) {
 		state_data[0] = GSX_GESTURE_CMD;
 		state_data[1] = 0x02;
 		state_data[2] = 0xF6;
 		ret = goodix_i2c_write(dev, GSX_REG_GESTURE, state_data, 3);
+		if (!ret) {
+			atomic_set(&core_data->suspend_stat, TP_SLEEP);
+		}
 		ts_info("Set IC double wakeup mode off,FOD mode off;");
 	} else {
 		ret = -1;
@@ -619,11 +640,11 @@ static int goodix_wakeup_and_set_suspend_func(struct goodix_ts_core *core_data)
 		}
 	} while (r < 0 && ++retry < 3);
 
-	if (core_data->double_wakeup && core_data->fod_status) {
+	if (core_data->double_wakeup && (core_data->fod_status == 1 || core_data->aod_status)) {
 		atomic_set(&core_data->suspend_stat, TP_GESTURE_DBCLK_FOD);
 	} else if (core_data->double_wakeup) {
 		atomic_set(&core_data->suspend_stat, TP_GESTURE_DBCLK);
-	} else if (core_data->fod_status) {
+	} else if (core_data->fod_status == 1 || core_data->aod_status) {
 		atomic_set(&core_data->suspend_stat, TP_GESTURE_FOD);
 	}
 	ts_info("suspend_stat[%d]", atomic_read(&core_data->suspend_stat));
