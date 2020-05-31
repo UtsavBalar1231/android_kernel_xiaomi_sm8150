@@ -1522,8 +1522,8 @@ static int __write_node_page(struct page *page, bool atomic, bool *submitted,
 
 	if (unlikely(f2fs_cp_error(sbi))) {
 		if (is_sbi_flag_set(sbi, SBI_IS_CLOSE)) {
+			ClearPageUptodate(page);
 			dec_page_count(sbi, F2FS_DIRTY_NODES);
-			up_read(&sbi->node_write);
 			unlock_page(page);
 			return 0;
 		}
