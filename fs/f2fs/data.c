@@ -419,22 +419,28 @@ void f2fs_submit_bio(struct f2fs_sb_info *sbi,
 	__submit_bio(sbi, bio, type);
 }
 
-static void __attach_data_io_flag(struct f2fs_io_info *fio)
+static void __attach_io_flag(struct f2fs_io_info *fio)
 {
 	struct f2fs_sb_info *sbi = fio->sbi;
 	unsigned int temp_mask = (1 << NR_TEMP_TYPE) - 1;
-	unsigned int fua_flag = sbi->data_io_flag & temp_mask;
-	unsigned int meta_flag = (sbi->data_io_flag >> NR_TEMP_TYPE) &
-								temp_mask;
+	unsigned int io_flag, fua_flag, meta_flag;
+
+	if (fio->type == DATA)
+		io_flag = sbi->data_io_flag;
+	else if (fio->type == NODE)
+		io_flag = sbi->node_io_flag;
+	else
+		return;
+
+	fua_flag = io_flag & temp_mask;
+	meta_flag = (io_flag >> NR_TEMP_TYPE) & temp_mask;
+
 	/*
-	 * data io flag bits per temp:
+	 * data/node io flag bits per temp:
 	 *      REQ_META     |      REQ_FUA      |
 	 *    5 |    4 |   3 |    2 |    1 |   0 |
 	 * Cold | Warm | Hot | Cold | Warm | Hot |
 	 */
-	if (fio->type != DATA)
-		return;
-
 	if ((1 << fio->temp) & meta_flag)
 		fio->op_flags |= REQ_META;
 	if ((1 << fio->temp) & fua_flag)
@@ -448,7 +454,7 @@ static void __submit_merged_bio(struct f2fs_bio_info *io)
 	if (!io->bio)
 		return;
 
-	__attach_data_io_flag(fio);
+	__attach_io_flag(fio);
 	bio_set_op_attrs(io->bio, fio->op, fio->op_flags);
 
 	if (is_read_io(fio->op))
@@ -596,6 +602,7 @@ int f2fs_submit_page_bio(struct f2fs_io_info *fio)
 	if (fio->io_wbc && !is_read_io(fio->op))
 		wbc_account_io(fio->io_wbc, page, PAGE_SIZE);
 
+	__attach_io_flag(fio);
 	bio_set_op_attrs(bio, fio->op, fio->op_flags);
 
 	inc_page_count(fio->sbi, is_read_io(fio->op) ?
@@ -798,6 +805,7 @@ int f2fs_merge_page_bio(struct f2fs_io_info *fio)
 alloc_new:
 	if (!bio) {
 		bio = __bio_alloc(fio, BIO_MAX_PAGES);
+		__attach_io_flag(fio);
 		bio_set_op_attrs(bio, fio->op, fio->op_flags);
 		if (bio_encrypted)
 			fscrypt_set_ice_dun(inode, bio, dun);
@@ -2806,7 +2814,6 @@ static int f2fs_write_cache_pages(struct address_space *mapping,
 	pgoff_t index;
 	pgoff_t end;		/* Inclusive */
 	pgoff_t done_index;
-	int cycled;
 	int range_whole = 0;
 	int tag;
 	int nwritten = 0;
@@ -2824,17 +2831,12 @@ static int f2fs_write_cache_pages(struct address_space *mapping,
 	if (wbc->range_cyclic) {
 		writeback_index = mapping->writeback_index; /* prev offset */
 		index = writeback_index;
-		if (index == 0)
-			cycled = 1;
-		else
-			cycled = 0;
 		end = -1;
 	} else {
 		index = wbc->range_start >> PAGE_SHIFT;
 		end = wbc->range_end >> PAGE_SHIFT;
 		if (wbc->range_start == 0 && wbc->range_end == LLONG_MAX)
 			range_whole = 1;
-		cycled = 1; /* ignore range_cyclic tests */
 	}
 	if (wbc->sync_mode == WB_SYNC_ALL || wbc->tagged_writepages)
 		tag = PAGECACHE_TAG_TOWRITE;
@@ -3003,12 +3005,13 @@ next:
 		}
 	}
 #endif
-	if ((!cycled && !done) || retry) {
-		cycled = 1;
+	if (retry) {
 		index = 0;
-		end = writeback_index - 1;
+		end = -1;
 		goto retry;
 	}
+	if (wbc->range_cyclic && !done)
+		done_index = 0;
 	if (wbc->range_cyclic || (range_whole && wbc->nr_to_write > 0))
 		mapping->writeback_index = done_index;
 
