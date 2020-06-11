@@ -3000,6 +3000,7 @@ static void ufshcd_init_hibern8_on_idle(struct ufs_hba *hba)
 		 * auto hibern8 is supported
 		 */
 		hba->caps &= ~UFSHCD_CAP_HIBERN8_ENTER_ON_IDLE;
+		hba->hibern8_on_idle.is_enabled = true;
 		return;
 	} else {
 		hba->hibern8_on_idle.delay_ms = 10;
@@ -11239,7 +11240,7 @@ int ufshcd_init(struct ufs_hba *hba, void __iomem *mmio_base, unsigned int irq)
 	mb();
 
 	/* IRQ registration */
-	err = devm_request_irq(dev, irq, ufshcd_intr, IRQF_SHARED,
+	err = devm_request_irq(dev, irq, ufshcd_intr, IRQF_SHARED | IRQF_PERF_CRITICAL,
 				dev_name(dev), hba);
 	if (err) {
 		dev_err(hba->dev, "request irq failed\n");
