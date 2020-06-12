@@ -188,7 +188,7 @@ static int crus_afe_get_param(int port, int module, int param, int length,
 	int index = afe_get_port_index(port);
 	int ret = 0, count = 0;
 
-	pr_info("CRUS_SP: (get_param) module = 0x%08x, port = 0x%08x, param = 0x%08x\n",
+	pr_debug("CRUS_SP: (get_param) module = 0x%08x, port = 0x%08x, param = 0x%08x\n",
 		module, port, param);
 
 	config = (struct afe_custom_crus_get_config_v2_t *)
