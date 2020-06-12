@@ -43,8 +43,10 @@ static void free_master_key(struct fscrypt_master_key *mk)
 
 	wipe_master_key_secret(&mk->mk_secret);
 
-	for (i = 0; i < ARRAY_SIZE(mk->mk_mode_keys); i++)
-		crypto_free_skcipher(mk->mk_mode_keys[i]);
+	for (i = 0; i <= __FSCRYPT_MODE_MAX; i++) {
+		crypto_free_skcipher(mk->mk_direct_tfms[i]);
+		crypto_free_skcipher(mk->mk_iv_ino_lblk_64_tfms[i]);
+	}
 
 	key_put(mk->mk_users);
 	kzfree(mk);
@@ -608,7 +610,6 @@ int fscrypt_ioctl_add_key(struct file *filp, void __user *_uarg)
 		return -EINVAL;
 
 	memset(&secret, 0, sizeof(secret));
-
 	if (arg.key_id) {
 		if (arg.raw_size != 0)
 			return -EINVAL;
@@ -619,12 +620,10 @@ int fscrypt_ioctl_add_key(struct file *filp, void __user *_uarg)
 		if (arg.raw_size < FSCRYPT_MIN_KEY_SIZE ||
 		    arg.raw_size > FSCRYPT_MAX_KEY_SIZE)
 			return -EINVAL;
-
 		secret.size = arg.raw_size;
 		err = -EFAULT;
-		if (copy_from_user(secret.raw, uarg->raw, secret.size)) {
+		if (copy_from_user(secret.raw, uarg->raw, secret.size))
 			goto out_wipe_secret;
-		}
 	}
 
 	switch (arg.key_spec.type) {
@@ -777,9 +776,6 @@ static int check_for_busy_inodes(struct super_block *sb,
 	struct list_head *pos;
 	size_t busy_count = 0;
 	unsigned long ino;
-	struct dentry *dentry;
-	char _path[256];
-	char *path = NULL;
 
 	spin_lock(&mk->mk_decrypted_inodes_lock);
 
@@ -798,22 +794,14 @@ static int check_for_busy_inodes(struct super_block *sb,
 					 struct fscrypt_info,
 					 ci_master_key_link)->ci_inode;
 		ino = inode->i_ino;
-		dentry = d_find_alias(inode);
 	}
 	spin_unlock(&mk->mk_decrypted_inodes_lock);
 
-	if (dentry) {
-		path = dentry_path(dentry, _path, sizeof(_path));
-		dput(dentry);
-	}
-	if (IS_ERR_OR_NULL(path))
-		path = "(unknown)";
-
 	fscrypt_warn(NULL,
-		     "%s: %zu inode(s) still busy after removing key with %s %*phN, including ino %lu (%s)",
+		     "%s: %zu inode(s) still busy after removing key with %s %*phN, including ino %lu",
 		     sb->s_id, busy_count, master_key_spec_type(&mk->mk_spec),
 		     master_key_spec_len(&mk->mk_spec), (u8 *)&mk->mk_spec.u,
-		     ino, path);
+		     ino);
 	return -EBUSY;
 }
 
