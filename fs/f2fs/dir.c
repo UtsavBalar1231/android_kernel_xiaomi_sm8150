@@ -5,7 +5,6 @@
  * Copyright (c) 2012 Samsung Electronics Co., Ltd.
  *             http://www.samsung.com/
  */
-#include <asm/unaligned.h>
 #include <linux/fs.h>
 #include <linux/f2fs_fs.h>
 #include <linux/sched/signal.h>
@@ -83,14 +82,14 @@ int f2fs_init_casefolded_name(const struct inode *dir,
 						   GFP_NOFS);
 		if (!fname->cf_name.name)
 			return -ENOMEM;
-		fname->cf_name.len = utf8_casefold(sbi->sb->s_encoding,
+		fname->cf_name.len = utf8_casefold(sbi->s_encoding,
 						   fname->usr_fname,
 						   fname->cf_name.name,
 						   F2FS_NAME_LEN);
 		if ((int)fname->cf_name.len <= 0) {
 			kfree(fname->cf_name.name);
 			fname->cf_name.name = NULL;
-			if (sb_has_enc_strict_mode(dir->i_sb))
+			if (f2fs_has_strict_mode(sbi))
 				return -EINVAL;
 			/* fall back to treating name as opaque byte sequence */
 		}
@@ -216,29 +215,10 @@ static struct f2fs_dir_entry *find_in_block(struct inode *dir,
 static bool f2fs_match_ci_name(const struct inode *dir, const struct qstr *name,
 			       const u8 *de_name, u32 de_name_len)
 {
-	const struct super_block *sb = dir->i_sb;
-	const struct unicode_map *um = sb->s_encoding;
-	struct fscrypt_str decrypted_name = FSTR_INIT(NULL, de_name_len);
+	const struct f2fs_sb_info *sbi = F2FS_SB(dir->i_sb);
+	const struct unicode_map *um = sbi->s_encoding;
 	struct qstr entry = QSTR_INIT(de_name, de_name_len);
 	int res;
-
-	if (IS_ENCRYPTED(dir)) {
-		const struct fscrypt_str encrypted_name =
-			FSTR_INIT((u8 *)de_name, de_name_len);
-
-		if (WARN_ON_ONCE(!fscrypt_has_encryption_key(dir)))
-			return false;
-
-		decrypted_name.name = kmalloc(de_name_len, GFP_KERNEL);
-		if (!decrypted_name.name)
-			return false;
-		res = fscrypt_fname_disk_to_usr(dir, 0, 0, &encrypted_name,
-						&decrypted_name);
-		if (res < 0)
-			goto out;
-		entry.name = decrypted_name.name;
-		entry.len = decrypted_name.len;
-	}
 
 	res = utf8_strncasecmp_folded(um, name, &entry);
 	if (res < 0) {
@@ -246,13 +226,10 @@ static bool f2fs_match_ci_name(const struct inode *dir, const struct qstr *name,
 		 * In strict mode, ignore invalid names.  In non-strict mode,
 		 * fall back to treating them as opaque byte sequences.
 		 */
-		if (sb_has_enc_strict_mode(sb) || name->len != entry.len)
-			res = 1;
-		else
-			res = memcmp(name->name, entry.name, name->len);
+		if (f2fs_has_strict_mode(sbi) || name->len != entry.len)
+			return false;
+		return !memcmp(name->name, entry.name, name->len);
 	}
-out:
-	kfree(decrypted_name.name);
 	return res == 0;
 }
 #endif /* CONFIG_UNICODE */
@@ -477,14 +454,10 @@ void f2fs_set_link(struct inode *dir, struct f2fs_dir_entry *de,
 	f2fs_put_page(page, 1);
 }
 
-static void init_dent_inode(struct inode *dir, struct inode *inode,
-			    const struct f2fs_filename *fname,
+static void init_dent_inode(const struct f2fs_filename *fname,
 			    struct page *ipage)
 {
 	struct f2fs_inode *ri;
-
-	if (!fname) /* tmpfile case? */
-		return;
 
 	f2fs_wait_on_page_writeback(ipage, NODE, true, true);
 
@@ -492,24 +465,6 @@ static void init_dent_inode(struct inode *dir, struct inode *inode,
 	ri = F2FS_INODE(ipage);
 	ri->i_namelen = cpu_to_le32(fname->disk_name.len);
 	memcpy(ri->i_name, fname->disk_name.name, fname->disk_name.len);
-	if (IS_ENCRYPTED(dir)) {
-		file_set_enc_name(inode);
-		/*
-		 * Roll-forward recovery doesn't have encryption keys available,
-		 * so it can't compute the dirhash for encrypted+casefolded
-		 * filenames.  Append it to i_name if possible.  Else, disable
-		 * roll-forward recovery of the dentry (i.e., make fsync'ing the
-		 * file force a checkpoint) by setting LOST_PINO.
-		 */
-		if (IS_CASEFOLDED(dir)) {
-			if (fname->disk_name.len + sizeof(f2fs_hash_t) <=
-			    F2FS_NAME_LEN)
-				put_unaligned(fname->hash, (f2fs_hash_t *)
-					&ri->i_name[fname->disk_name.len]);
-			else
-				file_lost_pino(inode);
-		}
-	}
 	set_page_dirty(ipage);
 }
 
@@ -592,7 +547,11 @@ struct page *f2fs_init_inode_metadata(struct inode *inode, struct inode *dir,
 			return page;
 	}
 
-	init_dent_inode(dir, inode, fname, page);
+	if (fname) {
+		init_dent_inode(fname, page);
+		if (IS_ENCRYPTED(dir))
+			file_set_enc_name(inode);
+	}
 
 	/*
 	 * This file should be checkpointed during fsync.
@@ -1070,7 +1029,7 @@ static int f2fs_readdir(struct file *file, struct dir_context *ctx)
 
 	if (IS_ENCRYPTED(inode)) {
 		err = fscrypt_get_encryption_info(inode);
-		if (err)
+		if (err && err != -ENOKEY)
 			goto out;
 
 		err = fscrypt_fname_alloc_buffer(inode, F2FS_NAME_LEN, &fstr);
@@ -1146,3 +1105,72 @@ const struct file_operations f2fs_dir_operations = {
 	.compat_ioctl   = f2fs_compat_ioctl,
 #endif
 };
+
+#ifdef CONFIG_UNICODE
+static int f2fs_d_compare(const struct dentry *dentry, unsigned int len,
+			  const char *str, const struct qstr *name)
+{
+	const struct dentry *parent = READ_ONCE(dentry->d_parent);
+	const struct inode *dir = READ_ONCE(parent->d_inode);
+	const struct f2fs_sb_info *sbi = F2FS_SB(dentry->d_sb);
+	struct qstr entry = QSTR_INIT(str, len);
+	char strbuf[DNAME_INLINE_LEN];
+	int res;
+
+	if (!dir || !IS_CASEFOLDED(dir))
+		goto fallback;
+
+	/*
+	 * If the dentry name is stored in-line, then it may be concurrently
+	 * modified by a rename.  If this happens, the VFS will eventually retry
+	 * the lookup, so it doesn't matter what ->d_compare() returns.
+	 * However, it's unsafe to call utf8_strncasecmp() with an unstable
+	 * string.  Therefore, we have to copy the name into a temporary buffer.
+	 */
+	if (len <= DNAME_INLINE_LEN - 1) {
+		memcpy(strbuf, str, len);
+		strbuf[len] = 0;
+		entry.name = strbuf;
+		/* prevent compiler from optimizing out the temporary buffer */
+		barrier();
+	}
+
+	res = utf8_strncasecmp(sbi->s_encoding, name, &entry);
+	if (res >= 0)
+		return res;
+
+	return f2fs_ci_compare(inode, name, &qstr, false);
+}
+
+static int f2fs_d_hash(const struct dentry *dentry, struct qstr *str)
+{
+	struct f2fs_sb_info *sbi = F2FS_SB(dentry->d_sb);
+	const struct unicode_map *um = sbi->s_encoding;
+	const struct inode *inode = READ_ONCE(dentry->d_inode);
+	unsigned char *norm;
+	int len, ret = 0;
+
+	if (!inode || !IS_CASEFOLDED(inode))
+		return 0;
+
+	norm = f2fs_kmalloc(sbi, PATH_MAX, GFP_ATOMIC);
+	if (!norm)
+		return -ENOMEM;
+
+	len = utf8_casefold(um, str, norm, PATH_MAX);
+	if (len < 0) {
+		if (f2fs_has_strict_mode(sbi))
+			ret = -EINVAL;
+		goto out;
+	}
+	str->hash = full_name_hash(dentry, norm, len);
+out:
+	kvfree(norm);
+	return ret;
+}
+
+const struct dentry_operations f2fs_dentry_ops = {
+	.d_hash = f2fs_d_hash,
+	.d_compare = f2fs_d_compare,
+};
+#endif
