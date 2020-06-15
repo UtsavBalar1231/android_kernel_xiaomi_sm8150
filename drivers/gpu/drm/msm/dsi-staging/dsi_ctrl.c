@@ -210,7 +210,7 @@ static int dsi_ctrl_debugfs_init(struct dsi_ctrl *dsi_ctrl,
 	dir = debugfs_create_dir(dsi_ctrl->name, parent);
 	if (IS_ERR_OR_NULL(dir)) {
 		rc = PTR_ERR(dir);
-		pr_err("[DSI_%d] debugfs create dir failed, rc=%d\n",
+		pr_debug("[DSI_%d] debugfs create dir failed, rc=%d\n",
 		       dsi_ctrl->cell_index, rc);
 		goto error;
 	}
@@ -1923,7 +1923,7 @@ static struct platform_driver dsi_ctrl_driver = {
 	},
 };
 
-#if defined(CONFIG_DEBUG_FS)
+#if 0
 
 void dsi_ctrl_debug_dump(u32 *entries, u32 size)
 {
@@ -2037,12 +2037,7 @@ int dsi_ctrl_drv_init(struct dsi_ctrl *dsi_ctrl, struct dentry *parent)
 		goto error;
 	}
 
-	rc = dsi_ctrl_debugfs_init(dsi_ctrl, parent);
-	if (rc) {
-		pr_err("[DSI_%d] failed to init debug fs, rc=%d\n",
-		       dsi_ctrl->cell_index, rc);
-		goto error;
-	}
+	dsi_ctrl_debugfs_init(dsi_ctrl, parent);
 
 error:
 	mutex_unlock(&dsi_ctrl->ctrl_lock);
@@ -2577,7 +2572,7 @@ static int _dsi_ctrl_setup_isr(struct dsi_ctrl *dsi_ctrl)
 			dsi_ctrl->irq_info.irq_num = irq_num;
 			disable_irq_nosync(irq_num);
 
-			pr_info("[DSI_%d] IRQ %d registered\n",
+			pr_debug("[DSI_%d] IRQ %d registered\n",
 					dsi_ctrl->cell_index, irq_num);
 		}
 	}

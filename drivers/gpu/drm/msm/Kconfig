@@ -73,7 +73,6 @@ config DRM_MSM_DSI_STAGING
 
 config DSI_PARSER
 	bool "Enable DSI panel configuration parser"
-	depends on DYNAMIC_DEBUG
 	default y
 	help
 	  Choose this option if you need text parser for a DSI panel
@@ -198,3 +197,7 @@ config DRM_SDE_RSC
 	  avoids the display core power collapse. A client can also register
 	  for display core power collapse events on rsc.
 
+config FENCE_DEBUG
+	bool "Print fence name to userspace"
+	depends on DRM_MSM
+	default n

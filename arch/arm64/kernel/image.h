@@ -73,11 +73,7 @@
 
 #ifdef CONFIG_EFI
 
-/*
- * Use ABSOLUTE() to avoid ld.lld treating this as a relative symbol:
- * https://github.com/ClangBuiltLinux/linux/issues/561
- */
-__efistub_stext_offset = ABSOLUTE(stext - _text);
+__efistub_stext_offset = stext - _text;
 
 /*
  * The EFI stub has its own symbol namespace prefixed by __efistub_, to
@@ -105,9 +101,6 @@ __efistub___memmove		= __pi_memmove;
 __efistub___memset		= __pi_memset;
 #endif
 
-__efistub__text			= _text;
-__efistub__end			= _end;
-__efistub__edata		= _edata;
 __efistub_screen_info		= screen_info;
 
 #endif

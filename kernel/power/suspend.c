@@ -153,11 +153,11 @@ static int suspend_monitor_kthread(void *arg)
 			if (suspend_mon_toggle == TOGGLE_START) {
 				timeout = msecs_to_jiffies(
 					SUSPEND_TIMER_TIMEOUT_MS);
-				pr_info("Start suspend monitor\n");
+				pr_debug("Start suspend monitor\n");
 			} else if (suspend_mon_toggle == TOGGLE_STOP) {
 				timeout = MAX_SCHEDULE_TIMEOUT;
 				timeout_count = 0;
-				pr_info("Stop suspend monitor\n");
+				pr_debug("Stop suspend monitor\n");
 			}
 			suspend_mon_toggle = TOGGLE_NONE;
 			mutex_unlock(&suspend_mon_lock);
@@ -790,7 +790,7 @@ static void pm_suspend_marker(char *annotation)
 
 	getnstimeofday(&ts);
 	rtc_time_to_tm(ts.tv_sec, &tm);
-	pr_info("PM: suspend %s %d-%02d-%02d %02d:%02d:%02d.%09lu UTC\n",
+	pr_debug("PM: suspend %s %d-%02d-%02d %02d:%02d:%02d.%09lu UTC\n",
 		annotation, tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
 		tm.tm_hour, tm.tm_min, tm.tm_sec, ts.tv_nsec);
 }

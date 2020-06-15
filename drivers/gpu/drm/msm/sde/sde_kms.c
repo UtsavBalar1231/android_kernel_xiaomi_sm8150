@@ -81,6 +81,7 @@ static const char * const iommu_ports[] = {
 #define SDE_KMS_MODESET_LOCK_TIMEOUT_US 500
 #define SDE_KMS_MODESET_LOCK_MAX_TRIALS 20
 
+#define SDE_KMS_PM_QOS_CPU_DMA_LATENCY 300
 /**
  * sdecustom - enable certain driver customizations for sde clients
  *	Enabling this modifies the standard DRM behavior slightly and assumes
@@ -367,32 +368,9 @@ static void _sde_debugfs_destroy(struct sde_kms *sde_kms)
 static int sde_kms_enable_vblank(struct msm_kms *kms, struct drm_crtc *crtc)
 {
 	int ret = 0;
-	struct sde_kms *sde_kms;
-	struct msm_drm_private *priv;
-	struct sde_crtc *sde_crtc;
-	struct drm_encoder *drm_enc;
-
-	sde_kms = to_sde_kms(kms);
-	priv = sde_kms->dev->dev_private;
-	sde_crtc = to_sde_crtc(crtc);
 
 	SDE_ATRACE_BEGIN("sde_kms_enable_vblank");
-
-	if (sde_crtc->vblank_requested == false) {
-		SDE_ATRACE_BEGIN("sde_encoder_trigger_early_wakeup");
-		drm_for_each_encoder(drm_enc, crtc->dev)
-			sde_encoder_trigger_early_wakeup(drm_enc);
-
-		if (sde_kms->first_kickoff) {
-			sde_power_scale_reg_bus(&priv->phandle,
-					sde_kms->core_client,
-					VOTE_INDEX_HIGH, false);
-		}
-		SDE_ATRACE_END("sde_encoder_trigger_early_wakeup");
-	}
-
 	ret = sde_crtc_vblank(crtc, true);
-
 	SDE_ATRACE_END("sde_kms_enable_vblank");
 
 	return ret;
@@ -3195,6 +3173,59 @@ static void _sde_kms_set_lutdma_vbif_remap(struct sde_kms *sde_kms)
 	sde_vbif_set_qos_remap(sde_kms, &qos_params);
 }
 
+static void sde_kms_update_pm_qos_irq_request(struct sde_kms *sde_kms)
+{
+	struct pm_qos_request *req;
+
+	req = &sde_kms->pm_qos_irq_req;
+	req->type = PM_QOS_REQ_AFFINE_CORES;
+	req->cpus_affine = sde_kms->irq_cpu_mask;
+
+	if (pm_qos_request_active(req))
+		pm_qos_update_request(req, SDE_KMS_PM_QOS_CPU_DMA_LATENCY);
+	else if (!cpumask_empty(&req->cpus_affine)) {
+		/** If request is not active yet and mask is not empty
+		 *  then it needs to be added initially
+		 */
+		pm_qos_add_request(req, PM_QOS_CPU_DMA_LATENCY,
+					SDE_KMS_PM_QOS_CPU_DMA_LATENCY);
+	}
+}
+
+static void sde_kms_set_default_pm_qos_irq_request(struct sde_kms *sde_kms)
+{
+	if (pm_qos_request_active(&sde_kms->pm_qos_irq_req))
+		pm_qos_update_request(&sde_kms->pm_qos_irq_req,
+					PM_QOS_DEFAULT_VALUE);
+}
+
+static void sde_kms_irq_affinity_notify(
+		struct irq_affinity_notify *affinity_notify,
+		const cpumask_t *mask)
+{
+	struct msm_drm_private *priv;
+	struct sde_kms *sde_kms = container_of(affinity_notify,
+					struct sde_kms, affinity_notify);
+
+	if (!sde_kms || !sde_kms->dev || !sde_kms->dev->dev_private)
+		return;
+
+	priv = sde_kms->dev->dev_private;
+
+	mutex_lock(&priv->phandle.phandle_lock);
+
+	// save irq cpu mask
+	sde_kms->irq_cpu_mask = *mask;
+
+	// request vote with updated irq cpu mask
+	if (sde_kms->irq_enabled)
+		sde_kms_update_pm_qos_irq_request(sde_kms);
+
+	mutex_unlock(&priv->phandle.phandle_lock);
+}
+
+static void sde_kms_irq_affinity_release(struct kref *ref) {}
+
 static void sde_kms_handle_power_event(u32 event_type, void *usr)
 {
 	struct sde_kms *sde_kms = usr;
@@ -3213,7 +3244,9 @@ static void sde_kms_handle_power_event(u32 event_type, void *usr)
 		sde_kms_init_shared_hw(sde_kms);
 		_sde_kms_set_lutdma_vbif_remap(sde_kms);
 		sde_kms->first_kickoff = true;
+		sde_kms_update_pm_qos_irq_request(sde_kms);
 	} else if (event_type == SDE_POWER_EVENT_PRE_DISABLE) {
+		sde_kms_set_default_pm_qos_irq_request(sde_kms);
 		sde_irq_update(msm_kms, false);
 		sde_kms->first_kickoff = false;
 	}
@@ -3362,7 +3395,7 @@ static int sde_kms_hw_init(struct msm_kms *kms)
 	struct msm_drm_private *priv;
 	struct sde_rm *rm = NULL;
 	struct platform_device *platformdev;
-	int i, rc = -EINVAL;
+	int i, irq_num, rc = -EINVAL;
 
 	if (!kms) {
 		SDE_ERROR("invalid kms\n");
@@ -3670,6 +3703,13 @@ static int sde_kms_hw_init(struct msm_kms *kms)
 	}
 	return 0;
 
+	sde_kms->affinity_notify.notify = sde_kms_irq_affinity_notify;
+	sde_kms->affinity_notify.release = sde_kms_irq_affinity_release;
+
+	irq_num = platform_get_irq(to_platform_device(sde_kms->dev->dev), 0);
+	SDE_DEBUG("Registering for notification of irq_num: %d\n", irq_num);
+	irq_set_affinity_notifier(irq_num, &sde_kms->affinity_notify);
+
 genpd_err:
 drm_obj_init_err:
 	sde_core_perf_destroy(&sde_kms->perf);
@@ -3740,4 +3780,30 @@ int sde_kms_handle_recovery(struct drm_encoder *encoder)
 {
 	SDE_EVT32(DRMID(encoder), MSM_ENC_ACTIVE_REGION);
 	return sde_encoder_wait_for_event(encoder, MSM_ENC_ACTIVE_REGION);
+}
+
+void sde_kms_trigger_early_wakeup(struct sde_kms *sde_kms,
+		struct drm_crtc *crtc)
+{
+	struct msm_drm_private *priv;
+	struct drm_encoder *drm_enc;
+
+	if (!sde_kms || !crtc) {
+		SDE_ERROR("invalid argument sde_kms %pK crtc %pK\n",
+			sde_kms, crtc);
+		return;
+	}
+
+	priv = sde_kms->dev->dev_private;
+
+	SDE_ATRACE_BEGIN("sde_kms_trigger_early_wakeup");
+	drm_for_each_encoder_mask(drm_enc, crtc->dev, crtc->state->encoder_mask)
+		sde_encoder_trigger_early_wakeup(drm_enc);
+
+	if (sde_kms->first_kickoff) {
+		sde_power_scale_reg_bus(&priv->phandle,
+				sde_kms->core_client,
+				VOTE_INDEX_HIGH, false);
+	}
+	SDE_ATRACE_END("sde_kms_trigger_early_wakeup");
 }
