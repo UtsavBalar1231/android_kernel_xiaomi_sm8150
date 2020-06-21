@@ -22,6 +22,7 @@
 #include <linux/pmic-voter.h>
 #include <linux/of_batterydata.h>
 #include <linux/ktime.h>
+#include <linux/module.h>
 #include "smb5-lib.h"
 #include "smb5-reg.h"
 #include "schgm-flash.h"
@@ -1565,6 +1566,10 @@ int smblib_set_icl_current(struct smb_charger *chg, int icl_ua)
 	/* suspend if 25mA or less is requested */
 	bool suspend = (icl_ua <= SUSPEND_ICL_MAX);
 
+	if (chg->real_charger_type == POWER_SUPPLY_TYPE_USB &&
+			icl_ua == USBIN_500MA)
+		icl_ua = USBIN_900MA;
+
 	/* Do not configure ICL from SW for DAM cables */
 	if (smblib_get_prop_typec_mode(chg) ==
 			    POWER_SUPPLY_TYPEC_SINK_DEBUG_ACCESSORY)
@@ -1578,7 +1583,6 @@ int smblib_set_icl_current(struct smb_charger *chg, int icl_ua)
 
 	/* configure current */
 	if (chg->real_charger_type == POWER_SUPPLY_TYPE_USB
-		&& (icl_ua <= USBIN_500MA)
 		&& (chg->typec_legacy
 		|| chg->typec_mode == POWER_SUPPLY_TYPEC_SOURCE_DEFAULT
 		|| chg->connector_type == POWER_SUPPLY_CONNECTOR_MICRO_USB)) {
@@ -1593,7 +1597,7 @@ int smblib_set_icl_current(struct smb_charger *chg, int icl_ua)
 		 * current limit is 500mA or below for better accuracy; in case
 		 * of error, proceed to use USB high-current mode.
 		 */
-		if (icl_ua < USBIN_100MA) {
+		if (icl_ua <= USBIN_500MA) {
 			rc = set_sdp_current(chg, icl_ua);
 			if (rc >= 0)
 				goto unsuspend;
@@ -2829,6 +2833,9 @@ static void smblib_reg_work(struct work_struct *work)
 #define ADAPTER_ZIMI_CAR_POWER    0x0b
 
 #ifdef CONFIG_THERMAL
+unsigned int skip_therm = 0;
+module_param(skip_therm, uint, S_IWUSR | S_IRUGO);
+
 static int smblib_dc_therm_charging(struct smb_charger *chg,
 					int temp_level)
 {
@@ -2836,6 +2843,11 @@ static int smblib_dc_therm_charging(struct smb_charger *chg,
 	int rc = 0;
 	union power_supply_propval pval = {0, };
 	union power_supply_propval val = {0, };
+
+	if (skip_therm) {
+		vote(chg->dc_icl_votable, THERMAL_DAEMON_VOTER, false, 0);
+		return 0;
+	}
 
 	if (!chg->wls_psy) {
 		chg->wls_psy = power_supply_get_by_name("wireless");
@@ -2849,6 +2861,7 @@ static int smblib_dc_therm_charging(struct smb_charger *chg,
 	rc = power_supply_get_property(chg->wls_psy,
 				POWER_SUPPLY_PROP_WIRELESS_VERSION,
 				&val);
+
 		switch (pval.intval) {
 		case ADAPTER_XIAOMI_QC3:
 		case ADAPTER_ZIMI_CAR_POWER:
@@ -2955,6 +2968,12 @@ static int smblib_therm_charging(struct smb_charger *chg)
 
 	if (chg->system_temp_level >= MAX_TEMP_LEVEL)
 		return 0;
+
+	if (skip_therm) {
+		vote(chg->fcc_votable, THERMAL_DAEMON_VOTER, false, 0);
+		vote(chg->usb_icl_votable, THERMAL_DAEMON_VOTER, false, 0);
+		return 0;
+	}
 
 	switch (chg->real_charger_type) {
 	case POWER_SUPPLY_TYPE_USB_HVDCP:
@@ -5035,9 +5054,12 @@ static int smblib_handle_usb_current(struct smb_charger *chg,
 			&& (usb_current == SUSPEND_CURRENT_UA))
 		is_float = true;
 
-	if ((usb_current > 0 && usb_current < USBIN_500MA)
-			|| (usb_current == USBIN_900MA))
-		usb_current = USBIN_500MA;
+	if (chg->real_charger_type == POWER_SUPPLY_TYPE_USB) {
+		if (usb_current > 0 && usb_current < USBIN_500MA)
+			usb_current = USBIN_500MA;
+		else if (usb_current >= USBIN_500MA)
+			usb_current = USBIN_900MA;
+	}
 
 	if (chg->real_charger_type == POWER_SUPPLY_TYPE_USB_FLOAT) {
 		if (usb_current == -ETIMEDOUT
@@ -6628,30 +6650,22 @@ static void smblib_handle_hvdcp_3p0_auth_done(struct smb_charger *chg,
 
 	if (apsd_result->bit & QC_3P0_BIT) {
 		/* for QC3, switch to CP if present */
-		if ((chg->sec_cp_present) && (!chg->qc_class_ab)) {
+		if (chg->sec_cp_present) {
+			if (!chg->qc_class_ab) {
 				rc = smblib_select_sec_charger(chg,
-					POWER_SUPPLY_CHARGER_SEC_CP, POWER_SUPPLY_CP_HVDCP3, false);
+					POWER_SUPPLY_CHARGER_SEC_CP,
+					POWER_SUPPLY_CP_HVDCP3, false);
 				if (rc < 0)
 					dev_err(chg->dev,
-					"Couldn't enable secondary chargers  rc=%d\n", rc);
-		} else {
-			if (!chg->detect_low_power_qc3_charger) {
+					"Couldn't enable secondary chargers  rc=%d\n",
+						rc);
+			} else if (!chg->detect_low_power_qc3_charger) {
 				vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true,
 						HVDCP_START_CURRENT_UA);
 				schedule_delayed_work(&chg->raise_qc3_vbus_work, 0);
 				chg->detect_low_power_qc3_charger = true;
 			}
 		}
-
-	} else if (apsd_result->bit & QC_2P0_BIT
-		&& (!chg->qc2_unsupported)) {
-		pr_info("force 9V for QC2 charger\n");
-		rc = smblib_force_vbus_voltage(chg, FORCE_9V_BIT);
-		if (rc < 0)
-			pr_err("Failed to force 9V\n");
-			vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true,
-				HVDCP2_CURRENT_UA);
-	}
 
 		/* QC3.5 detection timeout */
 		if (!chg->apsd_ext_timeout &&
@@ -6663,6 +6677,16 @@ static void smblib_handle_hvdcp_3p0_auth_done(struct smb_charger *chg,
 				msecs_to_jiffies(APSD_EXTENDED_TIMEOUT_MS)
 				+ jiffies);
 		}
+
+	} else if (apsd_result->bit & QC_2P0_BIT
+			&& !chg->qc2_unsupported) {
+		pr_info("force 9V for QC2 charger\n");
+		rc = smblib_force_vbus_voltage(chg, FORCE_9V_BIT);
+		if (rc < 0)
+			pr_err("Failed to force 9V\n");
+		vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true,
+				HVDCP2_CURRENT_UA);
+	}
 
 	smblib_dbg(chg, PR_INTERRUPT, "IRQ: hvdcp-3p0-auth-done rising; %s detected\n",
 		   apsd_result->name);
