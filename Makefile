@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0
 VERSION = 4
 PATCHLEVEL = 14
-SUBLEVEL = 185
+SUBLEVEL = 186
 EXTRAVERSION =
 NAME = Petit Gorille
 
@@ -741,6 +741,17 @@ endif
 ifeq ($(cc-name),clang)
 KBUILD_CFLAGS   += -O3
 KBUILD_CFLAGS	+= $(call cc-option, -mcpu=cortex-a55 -mtune=cortex-a55)
+
+ifdef CONFIG_LLVM_POLLY
+KBUILD_CFLAGS	+= -mllvm -polly \
+		   -mllvm -polly-run-dce \
+		   -mllvm -polly-run-inliner \
+		   -mllvm -polly-opt-fusion=max \
+		   -mllvm -polly-ast-use-context \
+		   -mllvm -polly-detect-keep-going \
+		   -mllvm -polly-vectorizer=stripmine \
+		   -mllvm -polly-invariant-load-hoisting
+endif
 endif
 endif
 
