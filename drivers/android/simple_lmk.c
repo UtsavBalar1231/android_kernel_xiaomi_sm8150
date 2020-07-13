@@ -183,7 +183,7 @@ static void scan_and_kill(unsigned long pages_needed)
 
 	/* Pretty unlikely but it can happen */
 	if (unlikely(!nr_found)) {
-		pr_err("No processes available to kill!\n");
+		printk_once("No processes available to kill!\n");
 		return;
 	}
 
@@ -245,11 +245,9 @@ static void scan_and_kill(unsigned long pages_needed)
 
 static int simple_lmk_reclaim_thread(void *data)
 {
-	static const struct sched_param sched_max_rt_prio = {
-		.sched_priority = MAX_RT_PRIO - 1
-	};
+	struct sched_param param = { .sched_priority = 7 };
 
-	sched_setscheduler_nocheck(current, SCHED_FIFO, &sched_max_rt_prio);
+	sched_setscheduler_nocheck(current, SCHED_FIFO, &param);
 
 	while (1) {
 		wait_event(oom_waitq, atomic_read(&needs_reclaim));
@@ -297,7 +295,7 @@ static int simple_lmk_init_set(const char *val, const struct kernel_param *kp)
 	struct task_struct *thread;
 
 	if (!atomic_cmpxchg(&init_done, 0, 1)) {
-		thread = kthread_run(simple_lmk_reclaim_thread, NULL,
+		thread = kthread_run_perf_critical(simple_lmk_reclaim_thread, NULL,
 				     "simple_lmkd");
 		BUG_ON(IS_ERR(thread));
 		BUG_ON(vmpressure_notifier_register(&vmpressure_notif));
