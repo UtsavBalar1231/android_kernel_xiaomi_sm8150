@@ -37,6 +37,7 @@
  * license terms, and distributes only under these terms.
  */
 
+#include <linux/init.h>
 #include <linux/async.h>
 #include <scsi/ufs/ioctl.h>
 #include <linux/devfreq.h>
@@ -211,6 +212,8 @@ static void ufshcd_update_uic_error_cnt(struct ufs_hba *hba, u32 reg, int type)
 				 UFSHCD_ERROR_MASK)
 /* UIC command timeout, unit: ms */
 #define UIC_CMD_TIMEOUT	500
+
+#define UIC_PWR_CTRL_TIMEOUT 3000
 
 /* NOP OUT retries waiting for NOP IN response */
 #define NOP_OUT_RETRIES    10
@@ -5210,7 +5213,7 @@ static int ufshcd_uic_pwr_ctrl(struct ufs_hba *hba, struct uic_command *cmd)
 
 more_wait:
 	if (!wait_for_completion_timeout(hba->uic_async_done,
-					 msecs_to_jiffies(UIC_CMD_TIMEOUT))) {
+					 msecs_to_jiffies(UIC_PWR_CTRL_TIMEOUT))) {
 		u32 intr_status = 0;
 		s64 ts_since_last_intr;
 
@@ -11373,7 +11376,10 @@ int ufshcd_init(struct ufs_hba *hba, void __iomem *mmio_base, unsigned int irq)
 
 	ufshcd_cmd_log_init(hba);
 
-	async_schedule(ufshcd_async_scan, hba);
+	if (is_early_userspace)
+		ufshcd_async_scan(hba, (async_cookie_t)0);
+	else
+		async_schedule(ufshcd_async_scan, hba);
 
 	ufsdbg_add_debugfs(hba);
 

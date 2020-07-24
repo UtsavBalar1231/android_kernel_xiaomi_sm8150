@@ -2396,7 +2396,7 @@ static void tfa98xx_container_loaded(const struct firmware *cont, void *context)
 
 		/* we should be power-down device when parameter is loaded. */
 		tfa_dev_stop(tfa98xx->tfa);
-		ret = tfa98xx->dsp_init = TFA98XX_DSP_INIT_STOPPED;
+		tfa98xx->dsp_init = TFA98XX_DSP_INIT_STOPPED;
 
 		mutex_unlock(&tfa98xx->dsp_lock);
 	}
@@ -4149,6 +4149,7 @@ static int tfa98xx_i2c_probe(struct i2c_client *i2c,
 			pr_info("TFA9874 detected\n");
 			tfa98xx->flags |= TFA98XX_FLAG_MULTI_MIC_INPUTS;
 			tfa98xx->flags |= TFA98XX_FLAG_CALIBRATION_CTL;
+			tfa98xx->flags |= TFA98XX_FLAG_SKIP_INTERRUPTS;
 			tfa98xx->flags |= TFA98XX_FLAG_TDM_DEVICE;
 			break;
 		case 0x78: /* tfa9878 */

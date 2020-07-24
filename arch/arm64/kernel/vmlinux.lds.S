@@ -157,7 +157,7 @@ SECTIONS
 		__alt_instructions_end = .;
 	}
 	.altinstr_replacement : {
-		KEEP(*(.altinstr_replacement))
+		*(.altinstr_replacement)
 	}
 
 	. = ALIGN(PAGE_SIZE);
@@ -168,6 +168,7 @@ SECTIONS
 		INIT_DATA
 		INIT_SETUP(16)
 		INIT_CALLS
+		EARLY_INIT_CALLS
 		CON_INITCALL
 		SECURITY_INITCALL
 		INIT_RAM_FS
