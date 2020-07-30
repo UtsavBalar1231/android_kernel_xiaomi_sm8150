@@ -230,24 +230,6 @@ config CPU_FREQ_GOV_SCHEDUTIL
 
 	  If in doubt, say N.
 
-if CPU_FREQ_GOV_SCHEDUTIL
-
-config SCHEDUTIL_UP_RATE_LIMIT
-	int "Default up rate-limit for schedutil"
-	default 0
-	help
-	  This sets schedutil's default frequency up rate-limit in
-	  microseconds.
-
-config SCHEDUTIL_DOWN_RATE_LIMIT
-	int "Default down rate-limit for schedutil"
-	default 0
-	help
-	  This sets schedutil's default frequency down rate-limit in
-	  microseconds.
-
-endif
-
 config CPU_FREQ_GOV_INTERACTIVE
 	tristate "'interactive' cpufreq policy governor"
 	depends on CPU_FREQ
@@ -267,33 +249,6 @@ config CPU_FREQ_GOV_INTERACTIVE
 	  For details, take a look at linux/Documentation/cpu-freq.
 
 	  If in doubt, say N.
-
-config CPU_FREQ_DEFAULT_LITTLE_MIN
-	int "Default minimum frequency for the little cluster"
-	default 0
-	help
-	  This sets the default minimum frequency (in kHz) for the little CPU
-	  cluster.
-
-	  If in doubt, say 0 to use the hardware's minimum frequency.
-
-config CPU_FREQ_DEFAULT_BIG_MIN
-	int "Default minimum frequency for the big cluster"
-	default 0
-	help
-	  This sets the default minimum frequency (in kHz) for the big CPU
-	  cluster.
-
-	  If in doubt, say 0 to use the hardware's minimum frequency.
-
-config CPU_FREQ_DEFAULT_PRIME_MIN
-	int "Default minimum frequency for the prime cluster"
-	default 0
-	help
-	  This sets the default minimum frequency (in kHz) for the prime CPU
-	  cluster.
-
-	  If in doubt, say 0 to use the hardware's minimum frequency.
 
 config CPU_INPUT_BOOST
 	bool "CPU Input Boost"
