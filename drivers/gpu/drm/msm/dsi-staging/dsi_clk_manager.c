@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2019, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -139,7 +139,7 @@ int dsi_clk_set_pixel_clk_rate(void *client, u64 pixel_clk, u32 index)
  * dsi_clk_set_byte_clk_rate() - set frequency for byte clock
  * @client:	DSI clock client pointer.
  * @byte_clk:	Byte clock rate in Hz.
- * @byte_intf_clk: Byte interface clock rate in Hz.
+ * @byte_intf_clk:	Byte interface clock rate in Hz.
  * @index:	Index of the DSI controller.
  * return: error code in case of failure or 0 for success.
  */
@@ -159,13 +159,13 @@ int dsi_clk_set_byte_clk_rate(void *client, u64 byte_clk,
 
 	if (mngr->link_clks[index].hs_clks.byte_intf_clk) {
 		rc = clk_set_rate(mngr->link_clks[index].hs_clks.byte_intf_clk,
-							byte_intf_clk);
+				  byte_intf_clk);
 		if (rc)
 			pr_err("failed to set clk rate for byte intf clk=%d\n",
 			       rc);
 		else
-			mngr->link_clks[index].freq.byte_intf_clk_rate
-							= byte_intf_clk;
+			mngr->link_clks[index].freq.byte_intf_clk_rate =
+				byte_intf_clk;
 	}
 
 	return rc;

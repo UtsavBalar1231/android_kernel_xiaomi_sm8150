@@ -38,8 +38,8 @@
 
 #define GSI_STTS_REG_BITS 32
 
-#ifndef CONFIG_DEBUG_FS
-void gsi_debugfs_init(void)
+#ifndef CONFIG_GSI_DEBUG
+static inline void gsi_debugfs_init(void)
 {
 }
 #endif
@@ -2374,8 +2374,8 @@ int gsi_alloc_channel(struct gsi_chan_props *props, unsigned long dev_hdl,
 	if (props->prot == GSI_CHAN_PROT_GCI)
 		user_data_size += GSI_VEID_MAX;
 
-	user_data = devm_kzalloc(gsi_ctx->dev,
-		user_data_size * sizeof(*user_data),
+	user_data = devm_kcalloc(gsi_ctx->dev,
+		user_data_size, sizeof(*user_data),
 		GFP_KERNEL);
 	if (user_data == NULL) {
 		GSIERR("context not allocated\n");
@@ -3852,7 +3852,7 @@ int gsi_config_channel_mode(unsigned long chan_hdl, enum gsi_chan_mode mode)
 		curr = GSI_CHAN_MODE_CALLBACK;
 
 	if (mode == curr) {
-		GSIERR("already in requested mode %u chan_hdl=%lu\n",
+		GSIDBG("already in requested mode %u chan_hdl=%lu\n",
 				curr, chan_hdl);
 		spin_unlock_irqrestore(&gsi_ctx->slock, flags);
 		return -GSI_STATUS_UNSUPPORTED_OP;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2019, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -476,6 +476,8 @@ struct dsi_split_link_config {
  * @t_clk_pre:           Number of byte clock cycles that the high spped clock
  *                       shall be driven prior to data lane transitions from LP
  *                       to HS mode.
+ * @t_clk_pre_extend:    Increment t_clk_pre counter by 2 byteclk if set to
+ *                       true, otherwise increment by 1 byteclk.
  * @ignore_rx_eot:       Ignore Rx EOT packets if set to true.
  * @append_tx_eot:       Append EOT packets for forward transmissions if set to
  *                       true.
@@ -483,8 +485,8 @@ struct dsi_split_link_config {
  * @ext_bridge_map:      External bridge config reg needs to match with the port
  *                       reg config.
  * @force_hs_clk_lane:   Send continuous clock to the panel.
- * @phy_type:            DPHY/CPHY is enabled for this panel.
  * @dsi_split_link_config:  Split Link Configuration.
+ * @byte_intf_clk_div:   Determines the factor for calculating byte intf clock.
  */
 struct dsi_host_common_cfg {
 	enum dsi_pixel_format dst_format;
@@ -501,13 +503,14 @@ struct dsi_host_common_cfg {
 	bool bit_swap_blue;
 	u32 t_clk_post;
 	u32 t_clk_pre;
+	bool t_clk_pre_extend;
 	bool ignore_rx_eot;
 	bool append_tx_eot;
 	u32 ext_bridge_num;
 	u32 ext_bridge_map[MAX_DSI_CTRLS_PER_DISPLAY];
 	bool force_hs_clk_lane;
-	enum dsi_phy_type phy_type;
 	struct dsi_split_link_config split_link;
+	u32 byte_intf_clk_div;
 };
 
 /**
@@ -563,7 +566,7 @@ struct dsi_cmd_engine_cfg {
  * @common_config:         Host configuration common to both Video and Cmd mode.
  * @video_engine:          Video engine configuration if panel is in video mode.
  * @cmd_engine:            Cmd engine configuration if panel is in cmd mode.
- * @esc_clk_rate_khz:      Esc clock frequency in Hz.
+ * @esc_clk_rate_hz:       Esc clock frequency in Hz.
  * @bit_clk_rate_hz:       Bit clock frequency in Hz.
  * @bit_clk_rate_hz_override: DSI bit clk rate override from dt/sysfs.
  * @video_timing:          Video timing information of a frame.

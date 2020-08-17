@@ -450,7 +450,6 @@ static int __init do_mount_root(char *name, char *fs, int flags, void *data)
 	struct super_block *s;
 	int err;
 
-	place_marker("M - DRIVER F/S Init");
 
 	err = sys_mount((char __user *)name, (char __user *)"/root",
 			(char __user *)fs, (unsigned long)flags,
@@ -467,7 +466,6 @@ static int __init do_mount_root(char *name, char *fs, int flags, void *data)
 	       sb_rdonly(s) ? " readonly" : "",
 	       MAJOR(ROOT_DEV), MINOR(ROOT_DEV));
 
-	place_marker("M - DRIVER F/S Ready");
 
 	return 0;
 }
@@ -660,7 +658,6 @@ void __init prepare_namespace(void)
 
 	md_run_setup();
 	dm_run_setup();
-	dm_verity_setup();
 
 	// Try to mount partition labeled "system" first
 	ROOT_DEV = name_to_dev_t("PARTLABEL=system");
@@ -669,8 +666,8 @@ void __init prepare_namespace(void)
 		goto mount;
 	}
 
-		if (initrd_load())
-			goto out;
+	if (initrd_load())
+		goto out;
 
 	if (saved_root_name[0]) {
 		root_device_name = saved_root_name;

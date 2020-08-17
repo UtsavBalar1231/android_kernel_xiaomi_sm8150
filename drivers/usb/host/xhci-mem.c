@@ -646,9 +646,9 @@ struct xhci_stream_info *xhci_alloc_stream_info(struct xhci_hcd *xhci,
 	stream_info->num_stream_ctxs = num_stream_ctxs;
 
 	/* Initialize the array of virtual pointers to stream rings. */
-	stream_info->stream_rings = kzalloc(
-			sizeof(struct xhci_ring *)*num_streams,
-			mem_flags);
+	stream_info->stream_rings = kcalloc(num_streams,
+					    sizeof(struct xhci_ring *),
+					    mem_flags);
 	if (!stream_info->stream_rings)
 		goto cleanup_info;
 
@@ -1479,14 +1479,15 @@ int xhci_endpoint_init(struct xhci_hcd *xhci,
 	/* Allow 3 retries for everything but isoc, set CErr = 3 */
 	if (!usb_endpoint_xfer_isoc(&ep->desc))
 		err_count = 3;
-	/* Some devices get this wrong */
-	if (usb_endpoint_xfer_bulk(&ep->desc) && udev->speed == USB_SPEED_HIGH)
-		max_packet = 512;
-
-	if (usb_endpoint_xfer_bulk(&ep->desc) && udev->speed == USB_SPEED_FULL
-				&& max_packet < 8)
-		max_packet = 8;
-
+	/* HS bulk max packet should be 512, FS bulk supports 8, 16, 32 or 64 */
+	if (usb_endpoint_xfer_bulk(&ep->desc)) {
+		if (udev->speed == USB_SPEED_HIGH)
+			max_packet = 512;
+		if (udev->speed == USB_SPEED_FULL) {
+			max_packet = rounddown_pow_of_two(max_packet);
+			max_packet = clamp_val(max_packet, 8, 64);
+		}
+	}
 	/* xHCI 1.0 and 1.1 indicates that ctrl ep avg TRB Length should be 8 */
 	if (usb_endpoint_xfer_control(&ep->desc) && xhci->hci_version >= 0x100)
 		avg_trb_len = 8;
@@ -1669,7 +1670,7 @@ static int scratchpad_alloc(struct xhci_hcd *xhci, gfp_t flags)
 	if (!xhci->scratchpad->sp_array)
 		goto fail_sp2;
 
-	xhci->scratchpad->sp_buffers = kzalloc(sizeof(void *) * num_sp, flags);
+	xhci->scratchpad->sp_buffers = kcalloc(num_sp, sizeof(void *), flags);
 	if (!xhci->scratchpad->sp_buffers)
 		goto fail_sp3;
 
@@ -2312,11 +2313,12 @@ static int xhci_setup_port_arrays(struct xhci_hcd *xhci, gfp_t flags)
 	u32 cap_start;
 
 	num_ports = HCS_MAX_PORTS(xhci->hcs_params1);
-	xhci->port_array = kzalloc(sizeof(*xhci->port_array)*num_ports, flags);
+	xhci->port_array = kcalloc(num_ports, sizeof(*xhci->port_array),
+				   flags);
 	if (!xhci->port_array)
 		return -ENOMEM;
 
-	xhci->rh_bw = kzalloc(sizeof(*xhci->rh_bw)*num_ports, flags);
+	xhci->rh_bw = kcalloc(num_ports, sizeof(*xhci->rh_bw), flags);
 	if (!xhci->rh_bw)
 		return -ENOMEM;
 	for (i = 0; i < num_ports; i++) {
@@ -2343,7 +2345,7 @@ static int xhci_setup_port_arrays(struct xhci_hcd *xhci, gfp_t flags)
 						      XHCI_EXT_CAPS_PROTOCOL);
 	}
 
-	xhci->ext_caps = kzalloc(sizeof(*xhci->ext_caps) * cap_count, flags);
+	xhci->ext_caps = kcalloc(cap_count, sizeof(*xhci->ext_caps), flags);
 	if (!xhci->ext_caps)
 		return -ENOMEM;
 
@@ -2386,8 +2388,9 @@ static int xhci_setup_port_arrays(struct xhci_hcd *xhci, gfp_t flags)
 	 * Not sure how the USB core will handle a hub with no ports...
 	 */
 	if (xhci->num_usb2_ports) {
-		xhci->usb2_ports = kmalloc(sizeof(*xhci->usb2_ports)*
-				xhci->num_usb2_ports, flags);
+		xhci->usb2_ports = kmalloc_array(xhci->num_usb2_ports,
+						 sizeof(*xhci->usb2_ports),
+						 flags);
 		if (!xhci->usb2_ports)
 			return -ENOMEM;
 
@@ -2411,8 +2414,9 @@ static int xhci_setup_port_arrays(struct xhci_hcd *xhci, gfp_t flags)
 		}
 	}
 	if (xhci->num_usb3_ports) {
-		xhci->usb3_ports = kmalloc(sizeof(*xhci->usb3_ports)*
-				xhci->num_usb3_ports, flags);
+		xhci->usb3_ports = kmalloc_array(xhci->num_usb3_ports,
+						 sizeof(*xhci->usb3_ports),
+						 flags);
 		if (!xhci->usb3_ports)
 			return -ENOMEM;
 

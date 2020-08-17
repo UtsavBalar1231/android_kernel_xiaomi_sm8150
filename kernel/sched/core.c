@@ -2316,6 +2316,9 @@ static void __sched_fork(unsigned long clone_flags, struct task_struct *p)
 	p->boost_expires        = 0;
 	p->boost_period         = 0;
 
+#ifdef CONFIG_SCHED_WALT
+	p->low_latency			= 0;
+#endif
 	INIT_LIST_HEAD(&p->se.group_node);
 
 #ifdef CONFIG_FAIR_GROUP_SCHED
@@ -7389,7 +7392,7 @@ const u32 sched_prio_to_wmult[40] = {
  */
 int set_task_boost(int boost, u64 period)
 {
-	if (boost < 0 || boost > 2)
+	if (boost < TASK_BOOST_NONE || boost >= TASK_BOOST_END)
 		return -EINVAL;
 	if (boost) {
 		current->boost = boost;

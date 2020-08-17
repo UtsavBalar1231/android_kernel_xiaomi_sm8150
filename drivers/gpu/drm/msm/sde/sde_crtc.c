@@ -2872,7 +2872,7 @@ void sde_crtc_prepare_commit(struct drm_crtc *crtc,
 	struct sde_crtc_state *cstate;
 	struct drm_connector *conn;
 	struct drm_encoder *encoder;
-	struct drm_connector_list_iter conn_iter;
+	int i;
 
 	if (!crtc || !crtc->state) {
 		SDE_ERROR("invalid crtc\n");
@@ -2886,24 +2886,16 @@ void sde_crtc_prepare_commit(struct drm_crtc *crtc,
 
 	SDE_ATRACE_BEGIN("sde_crtc_prepare_commit");
 
-	/* identify connectors attached to this crtc */
-	cstate->num_connectors = 0;
-
-	drm_connector_list_iter_begin(dev, &conn_iter);
-	drm_for_each_connector_iter(conn, &conn_iter)
-		if (conn->state && conn->state->crtc == crtc &&
-				cstate->num_connectors < MAX_CONNECTORS) {
-			encoder = conn->state->best_encoder;
-			if (encoder)
-				sde_encoder_register_frame_event_callback(
-						encoder,
-						sde_crtc_frame_event_cb,
-						crtc);
-
-			cstate->connectors[cstate->num_connectors++] = conn;
-			sde_connector_prepare_fence(conn);
-		}
-	drm_connector_list_iter_end(&conn_iter);
+	for (i = 0; i < cstate->num_connectors; i++) {
+		conn = cstate->connectors[i];
+		encoder = conn->state->best_encoder;
+		if (encoder)
+			sde_encoder_register_frame_event_callback(
+					encoder,
+					sde_crtc_frame_event_cb,
+					crtc);
+		sde_connector_prepare_fence(conn);
+	}
 
 	/* prepare main output fence */
 	sde_fence_prepare(sde_crtc->output_fence);
@@ -3761,9 +3753,9 @@ static void sde_crtc_atomic_begin(struct drm_crtc *crtc,
 		return;
 	}
 
-	if (!crtc->state->enable) {
-		SDE_DEBUG("crtc%d -> enable %d, skip atomic_begin\n",
-				crtc->base.id, crtc->state->enable);
+	if (!crtc->state->active) {
+		SDE_DEBUG("crtc%d -> active %d, skip atomic_begin\n",
+				crtc->base.id, crtc->state->active);
 		return;
 	}
 

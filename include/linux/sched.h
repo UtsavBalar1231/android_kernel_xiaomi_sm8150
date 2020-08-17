@@ -123,6 +123,14 @@ enum fps {
 	FPS120 = 120,
 };
 
+enum task_boost_type {
+	TASK_BOOST_NONE = 0,
+	TASK_BOOST_ON_MID,
+	TASK_BOOST_ON_MAX,
+	TASK_BOOST_STRICT_MAX,
+	TASK_BOOST_END,
+};
+
 #ifdef CONFIG_DEBUG_ATOMIC_SLEEP
 
 /*
@@ -813,6 +821,7 @@ struct task_struct {
 	u64 cpu_cycles;
 	bool misfit;
 	u32 unfilter;
+	bool low_latency;
 #endif
 
 #ifdef CONFIG_CGROUP_SCHED
@@ -2011,11 +2020,5 @@ static inline void set_wake_up_idle(bool enabled)
 	else
 		current->flags &= ~PF_WAKE_UP_IDLE;
 }
-
-#ifdef CONFIG_DYNAMIC_STUNE_BOOST
-int do_stune_boost(char *st_name, int boost, int *slot);
-int do_stune_sched_boost(char *st_name, int *slot);
-int reset_stune_boost(char *st_name, int slot);
-#endif /* CONFIG_DYNAMIC_STUNE_BOOST */
 
 #endif

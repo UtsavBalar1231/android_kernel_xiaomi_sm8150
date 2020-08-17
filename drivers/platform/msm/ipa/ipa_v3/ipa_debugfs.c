@@ -110,6 +110,7 @@ const char *ipa3_hdr_proc_type_name[] = {
 	__stringify(IPA_HDR_PROC_ETHII_TO_ETHII_EX),
 	__stringify(IPA_HDR_PROC_L2TP_UDP_HEADER_ADD),
 	__stringify(IPA_HDR_PROC_L2TP_UDP_HEADER_REMOVE),
+	__stringify(IPA_HDR_PROC_SET_DSCP),
 };
 
 static struct dentry *dent;
@@ -827,7 +828,7 @@ static ssize_t ipa3_read_rt_hw(struct file *file, char __user *ubuf,
 
 	IPADBG("Tring to parse %d H/W routing tables - IP=%d\n", tbls_num, ip);
 
-	rules = kzalloc(sizeof(*rules) * IPA_DBG_MAX_RULE_IN_TBL, GFP_KERNEL);
+	rules = kcalloc(IPA_DBG_MAX_RULE_IN_TBL, sizeof(*rules), GFP_KERNEL);
 	if (!rules) {
 		IPAERR("failed to allocate mem for tbl rules\n");
 		return -ENOMEM;
@@ -1052,7 +1053,7 @@ static ssize_t ipa3_read_flt_hw(struct file *file, char __user *ubuf,
 	IPADBG("Tring to parse %d H/W filtering tables - IP=%d\n",
 		ipa3_ctx->ep_flt_num, ip);
 
-	rules = kzalloc(sizeof(*rules) * IPA_DBG_MAX_RULE_IN_TBL, GFP_KERNEL);
+	rules = kcalloc(IPA_DBG_MAX_RULE_IN_TBL, sizeof(*rules), GFP_KERNEL);
 	if (!rules)
 		return -ENOMEM;
 

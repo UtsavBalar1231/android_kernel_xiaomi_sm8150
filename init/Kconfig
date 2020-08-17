@@ -2,6 +2,14 @@ config ARCH
 	string
 	option env="ARCH"
 
+config VERSION
+	string
+	option env="VERSION"
+
+config PATCHLEVEL
+	string
+	option env="PATCHLEVEL"
+
 config KERNELVERSION
 	string
 	option env="KERNELVERSION"
@@ -1169,15 +1177,6 @@ config CPUSET_TOP_APP
 	  The CPU mask to use for the audio-app cpuset.
 
 endif
-
-config DYNAMIC_STUNE_BOOST
-	bool "Dynamic SchedTune boosting support"
-	depends on SCHED_TUNE
-	help
-	  This option extends the SchedTune framework and provides APIs to
-	  activate and reset SchedTune boosting from anywhere in the kernel.
-
-	  If unsure, say N.
 
 config DEFAULT_USE_ENERGY_AWARE
 	bool "Default to enabling the Energy Aware Scheduler feature"

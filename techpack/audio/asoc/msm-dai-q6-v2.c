@@ -2648,7 +2648,6 @@ static int msm_dai_q6_set_channel_map(struct snd_soc_dai *dai,
 	return rc;
 }
 
-/* all ports with excursion logging requirement can use this digital_mute api */
 static int msm_dai_q6_spk_digital_mute(struct snd_soc_dai *dai,
 				       int mute)
 {
@@ -4141,9 +4140,9 @@ static int msm_auxpcm_dev_probe(struct platform_device *pdev)
 	}
 
 	auxpcm_pdata->mode_8k.slot_mapping =
-					kzalloc(sizeof(uint16_t) *
-					    auxpcm_pdata->mode_8k.num_slots,
-					    GFP_KERNEL);
+					kcalloc(auxpcm_pdata->mode_8k.num_slots,
+						sizeof(uint16_t),
+						GFP_KERNEL);
 	if (!auxpcm_pdata->mode_8k.slot_mapping) {
 		dev_err(&pdev->dev, "%s No mem for mode_8k slot mapping\n",
 			__func__);
@@ -4156,9 +4155,9 @@ static int msm_auxpcm_dev_probe(struct platform_device *pdev)
 				(u16)be32_to_cpu(slot_mapping_array[i]);
 
 	auxpcm_pdata->mode_16k.slot_mapping =
-					kzalloc(sizeof(uint16_t) *
-					     auxpcm_pdata->mode_16k.num_slots,
-					     GFP_KERNEL);
+					kcalloc(auxpcm_pdata->mode_16k.num_slots,
+						sizeof(uint16_t),
+						GFP_KERNEL);
 
 	if (!auxpcm_pdata->mode_16k.slot_mapping) {
 		dev_err(&pdev->dev, "%s No mem for mode_16k slot mapping\n",
@@ -10618,7 +10617,8 @@ static int msm_dai_q6_cdc_dma_prepare(struct snd_pcm_substream *substream,
 static void msm_dai_q6_cdc_dma_shutdown(struct snd_pcm_substream *substream,
 				     struct snd_soc_dai *dai)
 {
-	struct msm_dai_q6_dai_data *dai_data = dev_get_drvdata(dai->dev);
+	struct msm_dai_q6_cdc_dma_dai_data *dai_data =
+					dev_get_drvdata(dai->dev);
 	int rc = 0;
 
 	if (test_bit(STATUS_PORT_STARTED, dai_data->status_mask)) {
@@ -10637,6 +10637,19 @@ static void msm_dai_q6_cdc_dma_shutdown(struct snd_pcm_substream *substream,
 		clear_bit(STATUS_PORT_STARTED, dai_data->hwfree_status);
 }
 
+static int msm_dai_q6_cdc_dma_digital_mute(struct snd_soc_dai *dai,
+				       int mute)
+{
+	int port_id = dai->id;
+	struct msm_dai_q6_cdc_dma_dai_data *dai_data =
+					dev_get_drvdata(dai->dev);
+
+	if (mute && !dai_data->xt_logging_disable)
+		afe_get_sp_xt_logging_data(port_id);
+
+	return 0;
+}
+
 static struct snd_soc_dai_ops msm_dai_q6_cdc_dma_ops = {
 	.prepare          = msm_dai_q6_cdc_dma_prepare,
 	.hw_params        = msm_dai_q6_cdc_dma_hw_params,
@@ -10649,7 +10662,7 @@ static struct snd_soc_dai_ops msm_dai_q6_cdc_wsa_dma_ops = {
 	.hw_params        = msm_dai_q6_cdc_dma_hw_params,
 	.shutdown         = msm_dai_q6_cdc_dma_shutdown,
 	.set_channel_map = msm_dai_q6_cdc_dma_set_channel_map,
-	.digital_mute = msm_dai_q6_spk_digital_mute,
+	.digital_mute = msm_dai_q6_cdc_dma_digital_mute,
 };
 
 static struct snd_soc_dai_driver msm_dai_q6_cdc_dma_dai[] = {

@@ -139,7 +139,7 @@ extern int prepare_bprm_creds(struct linux_binprm *bprm);
 extern void install_exec_creds(struct linux_binprm *bprm);
 extern void set_binfmt(struct linux_binfmt *new);
 extern ssize_t read_code(struct file *, unsigned long, loff_t, size_t);
-extern bool is_zygote_pid(pid_t pid);
+extern bool task_is_zygote(struct task_struct *p);
 
 extern int do_execve(struct filename *,
 		     const char __user * const __user *,
@@ -149,7 +149,6 @@ extern int do_execveat(int, struct filename *,
 		       const char __user * const __user *,
 		       int);
 
-#ifndef CONFIG_CPU_BOOST
 static inline bool task_is_booster(struct task_struct *tsk)
 {
 	char comm[sizeof(tsk->comm)];
@@ -164,5 +163,5 @@ static inline bool task_is_booster(struct task_struct *tsk)
 	       !strcmp(comm, "iop@") ||
 	       !strcmp(comm, "init.qcom.post_");
 }
-#endif /* CONFIG_CPU_BOOST=n */
+
 #endif /* _LINUX_BINFMTS_H */

@@ -192,7 +192,7 @@ int detect_share_cap_flag(void)
 		if (cpumask_equal(topology_core_cpumask(cpu),
 				  policy->related_cpus)) {
 			share_cap_level = share_cap_core;
-			cpufreq_cpu_put(policy);
+                        cpufreq_cpu_put(policy);
 			continue;
 		}
 

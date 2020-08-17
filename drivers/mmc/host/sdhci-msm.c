@@ -1560,7 +1560,7 @@ static int sdhci_msm_dt_get_array(struct device *dev, const char *prop_name,
 		goto out;
 	}
 
-	arr = devm_kzalloc(dev, sz * sizeof(*arr), GFP_KERNEL);
+	arr = devm_kcalloc(dev, sz, sizeof(*arr), GFP_KERNEL);
 	if (!arr) {
 		ret = -ENOMEM;
 		goto out;
@@ -1745,8 +1745,10 @@ static int sdhci_msm_dt_parse_gpio_info(struct device *dev,
 			goto out;
 		}
 		pin_data->gpio_data->size = cnt;
-		pin_data->gpio_data->gpio = devm_kzalloc(dev, cnt *
-				sizeof(struct sdhci_msm_gpio), GFP_KERNEL);
+		pin_data->gpio_data->gpio = devm_kcalloc(dev,
+							 cnt,
+							 sizeof(struct sdhci_msm_gpio),
+							 GFP_KERNEL);
 
 		if (!pin_data->gpio_data->gpio) {
 			ret = -ENOMEM;
@@ -1956,7 +1958,6 @@ static int sdhci_msm_dt_parse_hsr_info(struct device *dev,
 	int dll_hsr_table_len, dll_hsr_reg_count;
 	int ret = 0;
 
-<<<<<<< HEAD
 	if (sdhci_msm_dt_get_array(dev, "qcom,dll-hsr-list",
 			&dll_hsr_table, &dll_hsr_table_len, 0))
 		goto skip_hsr;
@@ -4707,18 +4708,6 @@ static bool sdhci_msm_is_bootdevice(struct device *dev)
 	 */
 	return true;
 }
-=======
-static const struct sdhci_pltfm_data sdhci_msm_pdata = {
-	.quirks = SDHCI_QUIRK_BROKEN_CARD_DETECTION |
-		  SDHCI_QUIRK_NO_CARD_NO_RESET |
-		  SDHCI_QUIRK_SINGLE_POWER_WRITE |
-		  SDHCI_QUIRK_CAP_CLOCK_BASE_BROKEN |
-		  SDHCI_QUIRK_MULTIBLOCK_READ_ACMD12,
-
-	.quirks2 = SDHCI_QUIRK2_PRESET_VALUE_BROKEN,
-	.ops = &sdhci_msm_ops,
-};
->>>>>>> 539a88827e7b9e4b8f0c6b7b24a2324ad2bc9367
 
 static int sdhci_msm_probe(struct platform_device *pdev)
 {

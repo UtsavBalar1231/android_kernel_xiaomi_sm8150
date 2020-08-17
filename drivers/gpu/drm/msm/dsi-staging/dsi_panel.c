@@ -1319,7 +1319,6 @@ static int dsi_panel_parse_misc_host_config(struct dsi_host_common_cfg *host,
 {
 	u32 val = 0;
 	int rc = 0;
-	bool panel_cphy_mode = false;
 
 	rc = utils->read_u32(utils->data, "qcom,mdss-dsi-t-clk-post", &val);
 	if (!rc) {
@@ -1334,6 +1333,9 @@ static int dsi_panel_parse_misc_host_config(struct dsi_host_common_cfg *host,
 		pr_debug("[%s] t_clk_pre = %d\n", name, val);
 	}
 
+	host->t_clk_pre_extend = utils->read_bool(utils->data,
+						"qcom,mdss-dsi-t-clk-pre-extend");
+
 	host->ignore_rx_eot = utils->read_bool(utils->data,
 						"qcom,mdss-dsi-rx-eot-ignore");
 
@@ -1342,11 +1344,6 @@ static int dsi_panel_parse_misc_host_config(struct dsi_host_common_cfg *host,
 
 	host->force_hs_clk_lane = utils->read_bool(utils->data,
 					"qcom,mdss-dsi-force-clock-lane-hs");
-	panel_cphy_mode = utils->read_bool(utils->data,
-					"qcom,panel-cphy-mode");
-	host->phy_type = panel_cphy_mode ? DSI_PHY_TYPE_CPHY
-						: DSI_PHY_TYPE_DPHY;
-
 	return 0;
 }
 
@@ -2192,7 +2189,8 @@ static int dsi_panel_parse_misc_features(struct dsi_panel *panel)
 	pr_info("%s: ulps feature %s\n", __func__,
 		(panel->ulps_feature_enabled ? "enabled" : "disabled"));
 
-	panel->ulps_suspend_enabled = true;
+	panel->ulps_suspend_enabled =
+		utils->read_bool(utils->data, "qcom,suspend-ulps-enabled");
 
 	pr_info("%s: ulps during suspend feature %s", __func__,
 		(panel->ulps_suspend_enabled ? "enabled" : "disabled"));
@@ -3353,7 +3351,7 @@ int dsi_panel_parse_esd_reg_read_configs(struct dsi_panel *panel)
 	}
 
 	esd_config->status_value =
-		kzalloc(sizeof(u32) * status_len * esd_config->groups,
+		kzalloc(array3_size(sizeof(u32), status_len, esd_config->groups),
 			GFP_KERNEL);
 	if (!esd_config->status_value) {
 		rc = -ENOMEM;

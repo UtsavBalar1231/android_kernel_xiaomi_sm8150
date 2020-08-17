@@ -96,7 +96,6 @@ struct dsi_phy_per_lane_cfgs {
  * @lane_map:         DSI logical to PHY lane mapping.
  * @lane_pnswap:      P/N swap status on each lane.
  * @force_clk_lane_hs:Boolean whether to force clock lane in HS mode.
- * @phy_type:         Phy-type (Dphy/Cphy).
  * @bit_clk_rate_hz: DSI bit clk rate in HZ.
  */
 struct dsi_phy_cfg {
@@ -109,7 +108,6 @@ struct dsi_phy_cfg {
 	struct dsi_lane_map lane_map;
 	u8 lane_pnswap;
 	bool force_clk_lane_hs;
-	enum dsi_phy_type phy_type;
 	unsigned long bit_clk_rate_hz;
 };
 
@@ -264,6 +262,12 @@ struct dsi_phy_hw_ops {
 	 * @phy:      Pointer to DSI PHY hardware object.
 	 */
 	void (*phy_idle_off)(struct dsi_phy_hw *phy);
+
+	/**
+	 * set_idle_pc() - Enter/exit PHY idle power collapse
+	 */
+
+	void (*set_idle_pc)(struct dsi_phy_hw *phy, bool idle_pc_enabled);
 
 	/**
 	 * calculate_timing_params() - calculates timing parameters.

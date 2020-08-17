@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2019, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -2340,26 +2340,34 @@ error:
 	return rc;
 }
 
+static int dsi_display_phy_idle_pc(struct dsi_display *display,
+				   bool idle_pc_enabled)
+{
+	struct dsi_display_ctrl *ctrl;
+	int i, rc = 0;
+
+	display_for_each_ctrl(i, display) {
+		ctrl = &display->ctrl[i];
+		if (!ctrl->phy)
+			continue;
+
+		rc = dsi_phy_set_idle_pc(ctrl->phy, idle_pc_enabled);
+		if (rc) {
+			pr_err("[%s] Failed to set idle pc, rc=%d\n",
+			       ctrl->ctrl->name, rc);
+			goto error;
+		}
+	}
+error:
+	return rc;
+}
+
 static int dsi_display_set_clk_src(struct dsi_display *display, bool on)
 {
 	int rc = 0;
 	int i;
 	struct dsi_display_ctrl *m_ctrl, *ctrl;
 	struct dsi_clk_link_set *src;
-
-	/*
-	 * For CPHY mode, the parent of mux_clks need to be set
-	 * to Cphy_clks to have correct dividers for byte and
-	 * pixel clocks.
-	 */
-	if (display->panel->host_config.phy_type == DSI_PHY_TYPE_CPHY) {
-		rc = dsi_clk_update_parent(&display->clock_info.cphy_clks,
-			      &display->clock_info.mux_clks);
-		if (rc) {
-			pr_err("failed update mux parent to CPHY\n");
-			return rc;
-		}
-	}
 
 	/* if XO clk is defined, select XO clk src when DSI is disabled */
 	if (on)
@@ -3074,14 +3082,12 @@ static int dsi_display_clocks_init(struct dsi_display *display)
 	const char *clk_name;
 	const char *src_byte = "src_byte", *src_pixel = "src_pixel";
 	const char *mux_byte = "mux_byte", *mux_pixel = "mux_pixel";
-	const char *cphy_byte = "cphy_byte", *cphy_pixel = "cphy_pixel";
 	const char *shadow_byte = "shadow_byte", *shadow_pixel = "shadow_pixel";
 	const char *shadow_cphybyte = "shadow_cphybyte",
 				*shadow_cphypixel = "shadow_cphypixel";
 	struct clk *dsi_clk;
 	struct dsi_clk_link_set *src = &display->clock_info.src_clks;
 	struct dsi_clk_link_set *mux = &display->clock_info.mux_clks;
-	struct dsi_clk_link_set *cphy = &display->clock_info.cphy_clks;
 	struct dsi_clk_link_set *shadow = &display->clock_info.shadow_clks;
 	struct dsi_clk_link_set *shadow_cphy =
 					&display->clock_info.shadow_cphy_clks;
@@ -3113,15 +3119,6 @@ static int dsi_display_clocks_init(struct dsi_display *display)
 			}
 			if (dsi_display_check_prefix(mux_pixel, clk_name)) {
 				mux->pixel_clk = NULL;
-				goto error;
-			}
-
-			if (dsi_display_check_prefix(cphy_byte, clk_name)) {
-				cphy->byte_clk = NULL;
-				goto error;
-			}
-			if (dsi_display_check_prefix(cphy_pixel, clk_name)) {
-				cphy->pixel_clk = NULL;
 				goto error;
 			}
 
@@ -3159,16 +3156,6 @@ static int dsi_display_clocks_init(struct dsi_display *display)
 
 		if (dsi_display_check_prefix(src_pixel, clk_name)) {
 			src->pixel_clk = dsi_clk;
-			continue;
-		}
-
-		if (dsi_display_check_prefix(cphy_byte, clk_name)) {
-			cphy->byte_clk = dsi_clk;
-			continue;
-		}
-
-		if (dsi_display_check_prefix(cphy_pixel, clk_name)) {
-			cphy->pixel_clk = dsi_clk;
 			continue;
 		}
 
@@ -3524,6 +3511,12 @@ int dsi_pre_clkon_cb(void *priv,
 		pr_debug("%s: Enable DSI core power\n", __func__);
 	}
 
+	if ((clk_type & DSI_LINK_CLK) && (new_state == DSI_CLK_ON) &&
+	    !display->is_cont_splash_enabled) {
+		/* Enabling LINK clocks: disable PHY idle power collapse */
+		dsi_display_phy_idle_pc(display, false);
+	}
+
 	return rc;
 }
 
@@ -3787,8 +3780,6 @@ static int dsi_display_res_init(struct dsi_display *display)
 
 		phy->cfg.force_clk_lane_hs =
 			display->panel->host_config.force_hs_clk_lane;
-		phy->cfg.phy_type =
-			display->panel->host_config.phy_type;
 	}
 
 	rc = dsi_display_parse_lane_map(display);
@@ -3961,6 +3952,22 @@ static bool dsi_display_is_seamless_dfps_possible(
 	return true;
 }
 
+void dsi_display_update_byte_intf_div(struct dsi_display *display)
+{
+	struct dsi_host_common_cfg *config;
+	struct dsi_display_ctrl *m_ctrl;
+	int phy_ver;
+
+	m_ctrl = &display->ctrl[display->cmd_master_idx];
+	config = &display->panel->host_config;
+
+	phy_ver = dsi_phy_get_version(m_ctrl->phy);
+	if (phy_ver <= DSI_PHY_VERSION_2_0)
+		config->byte_intf_clk_div = 1;
+	else
+		config->byte_intf_clk_div = 2;
+}
+
 static int dsi_display_update_dsi_bitrate(struct dsi_display *display,
 					  u32 bit_clk_rate)
 {
@@ -3983,10 +3990,9 @@ static int dsi_display_update_dsi_bitrate(struct dsi_display *display,
 	display_for_each_ctrl(i, display) {
 		struct dsi_display_ctrl *dsi_disp_ctrl = &display->ctrl[i];
 		struct dsi_ctrl *ctrl = dsi_disp_ctrl->ctrl;
-		u32 num_of_lanes = 0, bpp;
+		u32 num_of_lanes = 0, bpp, byte_intf_clk_div;
 		u64 bit_rate, pclk_rate, bit_rate_per_lane, byte_clk_rate,
-						byte_intf_clk_rate;
-		u32 bits_per_symbol = 16, num_of_symbols = 7; /* For Cphy */
+				byte_intf_clk_rate;
 		struct dsi_host_common_cfg *host_cfg;
 
 		mutex_lock(&ctrl->ctrl_lock);
@@ -4010,31 +4016,22 @@ static int dsi_display_update_dsi_bitrate(struct dsi_display *display,
 		bpp = dsi_pixel_format_to_bpp(host_cfg->dst_format);
 
 		bit_rate = display->config.bit_clk_rate_hz * num_of_lanes;
-
+		bit_rate_per_lane = bit_rate;
+		do_div(bit_rate_per_lane, num_of_lanes);
 		pclk_rate = bit_rate;
 		do_div(pclk_rate, bpp);
-		if (host_cfg->phy_type == DSI_PHY_TYPE_DPHY) {
-			bit_rate_per_lane = bit_rate;
-			do_div(bit_rate_per_lane, num_of_lanes);
-			byte_clk_rate = bit_rate_per_lane;
-			do_div(byte_clk_rate, 8);
-			byte_intf_clk_rate = byte_clk_rate;
-			do_div(byte_intf_clk_rate, 2);
-		} else {
-			bit_rate_per_lane = bit_clk_rate;
-			pclk_rate *= bits_per_symbol;
-			do_div(pclk_rate, num_of_symbols);
-			byte_clk_rate = bit_clk_rate;
-			do_div(byte_clk_rate, num_of_symbols);
-			/* For CPHY, byte_intf_clk is same as byte_clk */
-			byte_intf_clk_rate = byte_clk_rate;
-		}
+		byte_clk_rate = bit_rate_per_lane;
+		do_div(byte_clk_rate, 8);
+		byte_intf_clk_rate = byte_clk_rate;
+		byte_intf_clk_div = host_cfg->byte_intf_clk_div;
+		do_div(byte_intf_clk_rate, byte_intf_clk_div);
 
 		pr_debug("bit_clk_rate = %llu, bit_clk_rate_per_lane = %llu\n",
 			 bit_rate, bit_rate_per_lane);
-		pr_debug("byte_clk_rate = %llu, byte_intf_clk_rate = %llu\n",
-			byte_clk_rate, byte_intf_clk_rate);
-		pr_debug("pclk_rate = %llu\n", pclk_rate);
+		pr_debug("bit_clk_rate = %llu, byte_intf_clk_rate = %llu\n",
+			 bit_rate, byte_intf_clk_rate);
+		pr_debug("byte_clk_rate = %llu, pclk_rate = %llu\n",
+			  byte_clk_rate, pclk_rate);
 
 		ctrl->clk_freq.byte_clk_rate = byte_clk_rate;
 		ctrl->clk_freq.byte_intf_clk_rate = byte_intf_clk_rate;
@@ -4068,18 +4065,19 @@ static void _dsi_display_calc_pipe_delay(struct dsi_display *display,
 	struct dsi_display_ctrl *m_ctrl;
 	struct dsi_ctrl *dsi_ctrl;
 	struct dsi_phy_cfg *cfg;
+	int phy_ver;
 
 	m_ctrl = &display->ctrl[display->clk_master_idx];
 	dsi_ctrl = m_ctrl->ctrl;
 
 	cfg = &(m_ctrl->phy->cfg);
 
-	esc_clk_rate_hz = dsi_ctrl->clk_freq.esc_clk_rate * 1000;
-	pclk_to_esc_ratio = ((dsi_ctrl->clk_freq.pix_clk_rate * 1000) /
+	esc_clk_rate_hz = dsi_ctrl->clk_freq.esc_clk_rate;
+	pclk_to_esc_ratio = (dsi_ctrl->clk_freq.pix_clk_rate /
 			     esc_clk_rate_hz);
-	byte_to_esc_ratio = ((dsi_ctrl->clk_freq.byte_clk_rate * 1000) /
+	byte_to_esc_ratio = (dsi_ctrl->clk_freq.byte_clk_rate /
 			     esc_clk_rate_hz);
-	hr_bit_to_esc_ratio = ((dsi_ctrl->clk_freq.byte_clk_rate * 4 * 1000) /
+	hr_bit_to_esc_ratio = ((dsi_ctrl->clk_freq.byte_clk_rate * 4) /
 					esc_clk_rate_hz);
 
 	hsync_period = DSI_H_TOTAL_DSC(&mode->timing);
@@ -4105,8 +4103,17 @@ static void _dsi_display_calc_pipe_delay(struct dsi_display *display,
 			  ((cfg->timing.lane_v3[4] >> 1) + 1)) /
 			 hr_bit_to_esc_ratio);
 
-	/* 130 us pll delay recommended by h/w doc */
-	delay->pll_delay = ((130 * esc_clk_rate_hz) / 1000000) * 2;
+	/*
+	 * 100us pll delay recommended for phy ver 2.0 and 3.0
+	 * 25us pll delay recommended for phy ver 4.0
+	 */
+	phy_ver = dsi_phy_get_version(m_ctrl->phy);
+	if (phy_ver <= DSI_PHY_VERSION_3_0)
+		delay->pll_delay = 100;
+	else
+		delay->pll_delay = 25;
+
+	delay->pll_delay = ((delay->pll_delay * esc_clk_rate_hz) / 1000000);
 }
 
 static int _dsi_display_dyn_update_clks(struct dsi_display *display,
@@ -4215,8 +4222,8 @@ recover_byte_clk:
 		if (!ctrl->ctrl)
 			continue;
 		dsi_clk_set_byte_clk_rate(display->dsi_clk_handle,
-					  bkp_freq->byte_clk_rate,
-					  bkp_freq->byte_intf_clk_rate, i);
+					bkp_freq->byte_clk_rate,
+					bkp_freq->byte_intf_clk_rate, i);
 	}
 
 exit:
@@ -5429,6 +5436,7 @@ static int dsi_display_bind(struct device *dev,
 		}
 	}
 
+	dsi_display_update_byte_intf_div(display);
 	rc = dsi_display_mipi_host_init(display);
 	if (rc) {
 		pr_err("[%s] failed to initialize mipi host, rc=%d\n",

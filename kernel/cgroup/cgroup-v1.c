@@ -197,9 +197,9 @@ struct cgroup_pidlist {
 static void *pidlist_allocate(int count)
 {
 	if (PIDLIST_TOO_LARGE(count))
-		return vmalloc(count * sizeof(pid_t));
+		return vmalloc(array_size(count, sizeof(pid_t)));
 	else
-		return kmalloc(count * sizeof(pid_t), GFP_KERNEL);
+		return kmalloc_array(count, sizeof(pid_t), GFP_KERNEL);
 }
 
 static void pidlist_free(void *p)
@@ -554,11 +554,9 @@ static ssize_t __cgroup1_procs_write(struct kernfs_open_file *of,
 	ret = cgroup_attach_task(cgrp, task, threadgroup);
 
 	/* This covers boosting for app launches and app transitions */
-	if (!ret && !threadgroup &&
-		!memcmp(of->kn->parent->name, "top-app", sizeof("top-app")) &&
-		is_zygote_pid(task->parent->pid)) {
+	if (!ret && !threadgroup && !strcmp(of->kn->parent->name, "top-app") &&
+	    task_is_zygote(task->parent))
 		cpu_input_boost_kick_max(1000);
-	}
 
 out_finish:
 	cgroup_procs_write_finish(task);

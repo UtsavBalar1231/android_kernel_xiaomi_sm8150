@@ -349,9 +349,6 @@ static int _freq_tbl_determine_rate(struct clk_hw *hw, const struct freq_tbl *f,
 
 	clk_flags = clk_hw_get_flags(hw);
 	p = clk_hw_get_parent_by_index(hw, index);
-	if (!p)
-		return -EINVAL;
-
 	if (clk_flags & CLK_SET_RATE_PARENT) {
 		if (f->pre_div) {
 			if (!rate)
@@ -1623,8 +1620,9 @@ int clk_rcg2_get_dfs_clock_rate(struct clk_rcg2 *clk, struct device *dev,
 	if (!(val & SE_CMD_DFS_EN))
 		return ret;
 
-	dfs_freq_tbl = devm_kzalloc(dev, MAX_PERF_LEVEL *
-				sizeof(struct freq_tbl), GFP_KERNEL);
+	dfs_freq_tbl = devm_kcalloc(dev,
+				    MAX_PERF_LEVEL, sizeof(struct freq_tbl),
+				    GFP_KERNEL);
 	if (!dfs_freq_tbl)
 		return -ENOMEM;
 
