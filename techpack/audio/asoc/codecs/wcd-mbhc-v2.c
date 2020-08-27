@@ -1,5 +1,4 @@
 /* Copyright (c) 2015-2018, The Linux Foundation. All rights reserved.
- * Copyright (C) 2019 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -257,7 +256,6 @@ static int wcd_event_notify(struct notifier_block *self, unsigned long val,
 					MBHC_COMMON_MICB_PRECHARGE,
 					false);
 out_micb_en:
-		/* Disable current source if micbias enabled */
 		if (!mbhc->mbhc_cb->mbhc_micbias_control) {
 			mbhc->is_hs_recording = true;
 			wcd_enable_curr_micbias(mbhc, WCD_MBHC_EN_MB);
@@ -1857,7 +1855,6 @@ int wcd_mbhc_start(struct wcd_mbhc *mbhc, struct wcd_mbhc_config *mbhc_cfg)
 				goto err;
 		}
 #endif
-
 			rc = wcd_mbhc_usb_c_analog_init(mbhc);
 			if (rc) {
 				rc = EPROBE_DEFER;

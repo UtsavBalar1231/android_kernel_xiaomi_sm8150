@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0
 VERSION = 4
 PATCHLEVEL = 14
-SUBLEVEL = 194
+SUBLEVEL = 195
 EXTRAVERSION =
 NAME = Petit Gorille
 
@@ -526,6 +526,8 @@ export CLANG_FLAGS
 ifeq ($(ld-name),lld)
 KBUILD_CFLAGS += -fuse-ld=lld
 endif
+CLANG_FLAGS	+= -fno-builtin-stpcpy
+CLANG_FLAGS	+= -fno-builtin-bcmp
 KBUILD_CPPFLAGS += -Qunused-arguments
 endif
 

@@ -2,7 +2,6 @@
  * cs35l41.c -- CS35l41 ALSA SoC audio driver
  *
  * Copyright 2018 Cirrus Logic, Inc.
- * Copyright (C) 2019 XiaoMi, Inc.
  *
  * Author:	David Rhodes	<david.rhodes@cirrus.com>
  *		Brian Austin	<brian.austin@cirrus.com>
@@ -12,6 +11,7 @@
  * published by the Free Software Foundation.
  *
  */
+#define DEBUG 1
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 #include <linux/version.h>

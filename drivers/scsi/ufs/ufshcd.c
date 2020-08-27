@@ -405,6 +405,8 @@ static inline bool ufshcd_is_valid_pm_lvl(int lvl)
 
 static struct ufs_dev_fix ufs_fixups[] = {
 	/* UFS cards deviations table */
+	UFS_FIX(UFS_VENDOR_MICRON, UFS_ANY_MODEL,
+		UFS_DEVICE_QUIRK_DELAY_BEFORE_LPM),
 	UFS_FIX(UFS_VENDOR_SAMSUNG, UFS_ANY_MODEL,
 		UFS_DEVICE_QUIRK_DELAY_BEFORE_LPM),
 	UFS_FIX(UFS_VENDOR_SAMSUNG, UFS_ANY_MODEL,
@@ -4243,7 +4245,7 @@ static int ufshcd_query_flag_retry(struct ufs_hba *hba,
 
 	for (retries = 0; retries < QUERY_REQ_RETRIES; retries++) {
 		ret = ufshcd_query_flag(hba, opcode, idn, flag_res);
-		if (ret)
+		if (ret && ret != -ENODEV)
 			dev_dbg(hba->dev,
 				"%s: failed with error %d, retries %d\n",
 				__func__, ret, retries);
@@ -4276,6 +4278,9 @@ int ufshcd_query_flag(struct ufs_hba *hba, enum query_opcode opcode,
 	int timeout = QUERY_REQ_TIMEOUT;
 
 	BUG_ON(!hba);
+
+	if (ufshcd_is_shutdown_ongoing(hba))
+		return -ENODEV;
 
 	ufshcd_hold_all(hba);
 	mutex_lock(&hba->dev_cmd.lock);
@@ -4345,6 +4350,9 @@ int ufshcd_query_attr(struct ufs_hba *hba, enum query_opcode opcode,
 
 	BUG_ON(!hba);
 
+	if (ufshcd_is_shutdown_ongoing(hba))
+		return -ENODEV;
+
 	ufshcd_hold_all(hba);
 	if (!attr_val) {
 		dev_err(hba->dev, "%s: attribute value required for opcode 0x%x\n",
@@ -4413,7 +4421,7 @@ static int ufshcd_query_attr_retry(struct ufs_hba *hba,
 	 for (retries = QUERY_REQ_RETRIES; retries > 0; retries--) {
 		ret = ufshcd_query_attr(hba, opcode, idn, index,
 						selector, attr_val);
-		if (ret)
+		if (ret && ret != -ENODEV)
 			dev_dbg(hba->dev, "%s: failed with error %d, retries %d\n",
 				__func__, ret, retries);
 		else
@@ -4436,6 +4444,9 @@ static int __ufshcd_query_descriptor(struct ufs_hba *hba,
 	int err;
 
 	BUG_ON(!hba);
+
+	if (ufshcd_is_shutdown_ongoing(hba))
+		return -ENODEV;
 
 	ufshcd_hold_all(hba);
 	if (!desc_buf) {
@@ -4519,7 +4530,7 @@ int ufshcd_query_descriptor_retry(struct ufs_hba *hba,
 	for (retries = QUERY_REQ_RETRIES; retries > 0; retries--) {
 		err = __ufshcd_query_descriptor(hba, opcode, idn, index,
 						selector, desc_buf, buf_len);
-		if (!err || err == -EINVAL)
+		if (!err || err == -EINVAL || err == -ENODEV)
 			break;
 	}
 
@@ -8009,8 +8020,12 @@ static int ufshcd_host_reset_and_restore(struct ufs_hba *hba)
 	ufshcd_set_clk_freq(hba, true);
 
 	err = ufshcd_hba_enable(hba);
-	if (err)
+	if (err) {
+		/* ufshcd_probe_hba() will put it */
+		if (!ufshcd_eh_in_progress(hba) && !hba->pm_op_in_progress)
+			pm_runtime_put_sync(hba->dev);
 		goto out;
+	}
 
 	/* Establish the link again and restore the device */
 	err = ufshcd_probe_hba(hba);
@@ -8071,6 +8086,8 @@ static int ufshcd_reset_and_restore(struct ufs_hba *hba)
 	ufshcd_enable_irq(hba);
 
 	do {
+		if (!ufshcd_eh_in_progress(hba) && !hba->pm_op_in_progress)
+			pm_runtime_get_sync(hba->dev);
 		err = ufshcd_detect_device(hba);
 	} while (err && --retries);
 
@@ -9154,14 +9171,22 @@ static int ufshcd_extcon_unregister(struct ufs_hba *hba)
 static void ufshcd_async_scan(void *data, async_cookie_t cookie)
 {
 	struct ufs_hba *hba = (struct ufs_hba *)data;
+	int ret, retry = 3;
 
 	/*
 	 * Don't allow clock gating and hibern8 enter for faster device
 	 * detection.
 	 */
+	pm_runtime_get_sync(hba->dev);
 	ufshcd_hold_all(hba);
-	ufshcd_probe_hba(hba);
+	ret = ufshcd_probe_hba(hba);
+	while (ret && retry) {
+		pr_err("%s failed. Err = %d. Retry %d\n", __func__, ret, retry);
+		ret = ufshcd_reset_and_restore(hba);
+		retry--;
+	}
 	ufshcd_release_all(hba);
+	pm_runtime_put_sync(hba->dev);
 
 	ufshcd_extcon_register(hba);
 }

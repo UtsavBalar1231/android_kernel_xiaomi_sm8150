@@ -614,7 +614,7 @@ static ssize_t sel_write_context(struct file *file, char *buf, size_t size)
 
 	length = -ERANGE;
 	if (len > SIMPLE_TRANSACTION_LIMIT) {
-		printk(KERN_ERR "SELinux: %s:  context size (%u) exceeds "
+		pr_err("SELinux: %s:  context size (%u) exceeds "
 			"payload max\n", __func__, len);
 		goto out;
 	}
@@ -815,6 +815,7 @@ static ssize_t sel_write_access(struct file *file, char *buf, size_t size)
 	struct selinux_fs_info *fsi = file_inode(file)->i_sb->s_fs_info;
 	struct selinux_state *state = fsi->state;
 	char *scon = NULL, *tcon = NULL;
+	char scon_onstack[256], tcon_onstack[256];
 	u32 ssid, tsid;
 	u16 tclass;
 	struct av_decision avd;
@@ -826,15 +827,22 @@ static ssize_t sel_write_access(struct file *file, char *buf, size_t size)
 	if (length)
 		goto out;
 
-	length = -ENOMEM;
-	scon = kzalloc(size + 1, GFP_KERNEL);
-	if (!scon)
-		goto out;
+	if (size + 1 > ARRAY_SIZE(scon_onstack)) {
+		length = -ENOMEM;
+		scon = kzalloc(size + 1, GFP_KERNEL);
+		if (!scon)
+			goto out;
 
-	length = -ENOMEM;
-	tcon = kzalloc(size + 1, GFP_KERNEL);
-	if (!tcon)
-		goto out;
+		length = -ENOMEM;
+		tcon = kzalloc(size + 1, GFP_KERNEL);
+		if (!tcon)
+			goto out;
+	} else {
+		scon = scon_onstack;
+		tcon = tcon_onstack;
+		memset(scon_onstack, 0, size + 1);
+		memset(tcon_onstack, 0, size + 1);
+	}
 
 	length = -EINVAL;
 	if (sscanf(buf, "%s %s %hu", scon, tcon, &tclass) != 3)
@@ -856,8 +864,10 @@ static ssize_t sel_write_access(struct file *file, char *buf, size_t size)
 			  avd.auditallow, avd.auditdeny,
 			  avd.seqno, avd.flags);
 out:
-	kfree(tcon);
-	kfree(scon);
+	if (scon != scon_onstack) {
+		kfree(tcon);
+		kfree(scon);
+	}
 	return length;
 }
 
@@ -950,7 +960,7 @@ static ssize_t sel_write_create(struct file *file, char *buf, size_t size)
 
 	length = -ERANGE;
 	if (len > SIMPLE_TRANSACTION_LIMIT) {
-		printk(KERN_ERR "SELinux: %s:  context size (%u) exceeds "
+		pr_err("SELinux: %s:  context size (%u) exceeds "
 			"payload max\n", __func__, len);
 		goto out;
 	}
@@ -1141,7 +1151,7 @@ static ssize_t sel_write_member(struct file *file, char *buf, size_t size)
 
 	length = -ERANGE;
 	if (len > SIMPLE_TRANSACTION_LIMIT) {
-		printk(KERN_ERR "SELinux: %s:  context size (%u) exceeds "
+		pr_err("SELinux: %s:  context size (%u) exceeds "
 			"payload max\n", __func__, len);
 		goto out;
 	}
@@ -2055,7 +2065,7 @@ static int sel_fill_super(struct super_block *sb, void *data, int silent)
 		goto err;
 	return 0;
 err:
-	printk(KERN_ERR "SELinux: %s:  failed while creating inodes\n",
+	pr_err("SELinux: %s:  failed while creating inodes\n",
 		__func__);
 
 	selinux_fs_info_free(sb);
@@ -2105,7 +2115,7 @@ static int __init init_sel_fs(void)
 
 	selinux_null.mnt = selinuxfs_mount = kern_mount(&sel_fs_type);
 	if (IS_ERR(selinuxfs_mount)) {
-		printk(KERN_ERR "selinuxfs:  could not mount!\n");
+		pr_err("selinuxfs:  could not mount!\n");
 		err = PTR_ERR(selinuxfs_mount);
 		selinuxfs_mount = NULL;
 	}
