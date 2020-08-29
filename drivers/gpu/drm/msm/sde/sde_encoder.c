@@ -224,6 +224,7 @@ enum sde_enc_rc_states {
  * @cur_conn_roi:		current connector roi
  * @prv_conn_roi:		previous connector roi to optimize if unchanged
  * @crtc			pointer to drm_crtc
+ * @first_kickoff_done:		boolean for whether the first kickoff is done
  * @recovery_events_enabled:	status of hw recovery feature enable by client
  * @elevated_ahb_vote:		increase AHB bus speed for the first frame
  *				after power collapse
@@ -284,6 +285,7 @@ struct sde_encoder_virt {
 	struct sde_rect cur_conn_roi;
 	struct sde_rect prv_conn_roi;
 	struct drm_crtc *crtc;
+	bool first_kickoff_done;
 
 	bool recovery_events_enabled;
 	bool elevated_ahb_vote;
@@ -4700,7 +4702,7 @@ static int _sde_encoder_reset_ctl_hw(struct drm_encoder *drm_enc)
 
 void sde_encoder_kickoff(struct drm_encoder *drm_enc, bool is_error)
 {
-	static bool first_run = true;
+	static __maybe_unused bool first_run = true;
 	struct sde_encoder_virt *sde_enc;
 	struct sde_encoder_phys *phys;
 	ktime_t wakeup_time;
@@ -4740,17 +4742,15 @@ void sde_encoder_kickoff(struct drm_encoder *drm_enc, bool is_error)
 	 * Trigger a panel reset if this is the first kickoff and the refresh
 	 * rate is not 60 Hz
 	 */
-	if (cmpxchg(&first_run, true, false) &&
+	if (!cmpxchg(&sde_enc->first_kickoff_done, false, true) &&
 	    sde_enc->crtc->mode.vrefresh != 60) {
-		struct sde_connector *conn = container_of(phys->connector, struct sde_connector, base);
+		struct sde_connector *conn = to_sde_connector(phys->connector);
 		struct drm_event event = {
 			.type = DRM_EVENT_PANEL_DEAD,
 			.length = sizeof(bool)
 		};
 
 		conn->panel_dead = true;
-		event.type = DRM_EVENT_PANEL_DEAD;
-		event.length = sizeof(bool);
 		msm_mode_object_event_notify(&conn->base.base,
 			conn->base.dev, &event, (u8 *) &conn->panel_dead);
 	}
