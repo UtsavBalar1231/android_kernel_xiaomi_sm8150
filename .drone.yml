@@ -18,7 +18,7 @@ steps:
       from_secret: ci_channel_id
     BOT_API_KEY:
       from_secret: bot_api_key
-    TYPE: "LOSFOD"
+    TYPE: "MIUI12"
   commands:
     - apt-get update && apt-get install -y bison build-essential bc bison curl libssl-dev git zip python flex
     - git clone https://github.com/UtsavBalar1231/Drone-scripts.git -b master script && cd script
@@ -26,6 +26,6 @@ steps:
     - ./build-kernel --proton --lto
   when:
     branch:
-      - auto-kernel
+      - auto-kernel-miui
     event:
       - push
