@@ -448,7 +448,7 @@ static int gsx_gesture_ist(struct goodix_ts_core *core_data,
 			input_mt_slot(core_data->input_dev, 0);
 			input_mt_report_slot_state(core_data->input_dev, MT_TOOL_FINGER, true);
 			input_report_key(core_data->input_dev, BTN_INFO, 1);
-			/*input_report_key(core_data->input_dev, KEY_INFO, 1);*/
+			input_report_key(core_data->input_dev, KEY_INFO, 1);
 			input_report_key(core_data->input_dev, BTN_TOUCH, 1);
 			input_report_key(core_data->input_dev, BTN_TOOL_FINGER, 1);
 			input_report_abs(core_data->input_dev, ABS_MT_TOOL_TYPE, MT_TOOL_FINGER);
@@ -487,7 +487,7 @@ static int gsx_gesture_ist(struct goodix_ts_core *core_data,
 			input_mt_report_slot_state(core_data->input_dev, MT_TOOL_FINGER, false);
 			input_report_abs(core_data->input_dev, ABS_MT_WIDTH_MINOR, 0);
 			input_report_key(core_data->input_dev, BTN_INFO, 0);
-			/*input_report_key(core_data->input_dev, KEY_INFO, 0);*/
+			input_report_key(core_data->input_dev, KEY_INFO, 0);
 			input_report_key(core_data->input_dev, BTN_TOUCH, 0);
 			input_report_key(core_data->input_dev, BTN_TOOL_FINGER, 0);
 			input_sync(core_data->input_dev);

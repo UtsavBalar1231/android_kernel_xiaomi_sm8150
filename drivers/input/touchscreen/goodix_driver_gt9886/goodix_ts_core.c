@@ -793,13 +793,13 @@ static int goodix_ts_input_report(struct input_dev *dev,
 	/*ts_info("get_event_now :0x%02x, pre_event : %d", get_event_now, pre_event);*/
 	if ((core_data->event_status & 0x88) == 0x88 && core_data->fod_status) {
 			input_report_key(core_data->input_dev, BTN_INFO, 1);
-			/*input_report_key(core_data->input_dev, KEY_INFO, 1);*/
+			input_report_key(core_data->input_dev, KEY_INFO, 1);
 			core_data->fod_pressed = true;
 			ts_info("BTN_INFO press");
 		} else if (core_data->fod_pressed && (core_data->event_status & 0x88) != 0x88) {
 		if (unlikely(!core_data->fod_test)) {
 			input_report_key(core_data->input_dev, BTN_INFO, 0);
-			/*input_report_key(core_data->input_dev, KEY_INFO, 0);*/
+			input_report_key(core_data->input_dev, KEY_INFO, 0);
 			ts_info("BTN_INFO release");
 			core_data->fod_pressed = false;
 		}
@@ -1137,7 +1137,7 @@ static ssize_t gtp_fod_test_store(struct device *dev,
 	sscanf(buf, "%u", &value);
 	if (value) {
 		input_report_key(core_data->input_dev, BTN_INFO, 1);
-		/*input_report_key(core_data->input_dev, KEY_INFO, 1);*/
+		input_report_key(core_data->input_dev, KEY_INFO, 1);
 		input_sync(core_data->input_dev);
 		input_mt_slot(core_data->input_dev, 0);
 		input_mt_report_slot_state(core_data->input_dev, MT_TOOL_FINGER, 1);
@@ -1154,7 +1154,7 @@ static ssize_t gtp_fod_test_store(struct device *dev,
 		input_mt_report_slot_state(core_data->input_dev, MT_TOOL_FINGER, 0);
 		input_report_abs(core_data->input_dev, ABS_MT_TRACKING_ID, -1);
 		input_report_key(core_data->input_dev, BTN_INFO, 0);
-		/*input_report_key(core_data->input_dev, KEY_INFO, 0);*/
+		input_report_key(core_data->input_dev, KEY_INFO, 0);
 		input_sync(core_data->input_dev);
 	}
 	return count;
@@ -1335,7 +1335,7 @@ int goodix_ts_input_dev_config(struct goodix_ts_core *core_data)
 	input_set_capability(input_dev, EV_KEY, KEY_WAKEUP);
 	input_set_capability(input_dev, EV_KEY, BTN_INFO);
 	input_set_capability(input_dev, EV_KEY, KEY_GOTO);
-	/*input_set_capability(input_dev, EV_KEY, KEY_INFO);*/
+	input_set_capability(input_dev, EV_KEY, KEY_INFO);
 
 	r = input_register_device(input_dev);
 	if (r < 0) {
